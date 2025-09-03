@@ -55,7 +55,7 @@ pipeline {
         always {
             echo 'This will always run, regardless of the build status.'
             // Commands here will execute even if the build was successful or failed.
-            sh 'python ai_generate_promt.py /Users/rasilainen/.jenkins/jobs/Coverage_AI_pipeline/builds/${env.BUILD_NUMBER}/log output.txt'
+            sh "python ai_generate_promt.py /Users/rasilainen/.jenkins/jobs/Coverage_AI_pipeline/builds/${env.BUILD_NUMBER}/log output.txt"
         }
     }
 }
