@@ -1,63 +1,95 @@
+# This script uses the Google Gemini 2.5 API to analyze a text file and save the AI's response to a file.
+# It requires the 'requests' library and 'python-dotenv', which can be installed with:
+# pip install requests python-dotenv
+#
+# Usage: python image_analyzer.py <input_text_file_path> <output_file_path>
+#
+# Remember to create a .env file in the same directory with your API key:
+# GEMINI_API_KEY="your_api_key_here"
 
-# To run this code you need to install the following dependencies:
-# pip install google-genai
-
-import base64
-import mimetypes
 import os
-from google import genai
-from google.genai import types
+import sys
+import requests
 
+# Load the API key from an environment variable.
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-def save_binary_file(file_name, data):
-    f = open(file_name, "wb")
-    f.write(data)
-    f.close()
-    print(f"File saved to to: {file_name}")
+# Your prompt for the AI model.
+# Edit this string to change the AI's instructions.
+PROMPT = "Read Jenkins console test.txt file and provide a detailed analysis of its" \
+" content. Write your analysis in a clear and structured manner. Focus on errors and problems, and find solution to them."
 
+def generate_text(input_path, prompt):
+    """
+    Sends a text file and a prompt to the Gemini 2.5 API for text generation.
+    Returns the AI's text response.
+    """
+    # 1. Check for the API key.
+    if not GEMINI_API_KEY:
+        print("GEMINI_API_KEY environment variable not set in the .env file.")
+        sys.exit(1)
 
-def generate():
-    client = genai.Client(
-        api_key=os.environ.get("GEMINI_API_KEY"),
-    )
+    # 2. Read the input text file.
+    try:
+        with open(input_path, "r", encoding="utf-8") as input_file:
+            input_text = input_file.read()
+    except FileNotFoundError:
+        print(f"Error: The input file '{input_path}' was not found.")
+        sys.exit(1)
 
-    model = "gemini-2.5-flash-image-preview"
-    contents = [
-        types.Content(
-            role="user",
-            parts=[
-                types.Part.from_text(text="""INSERT_INPUT_HERE"""),
-            ],
-        ),
-    ]
-    generate_content_config = types.GenerateContentConfig(
-        response_modalities=[
-            "IMAGE",
-            "TEXT",
+    # 3. Construct the API request payload.
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt + "\n\n" + input_text}
+                ]
+            }
         ],
-    )
+        "generationConfig": {
+            "responseMimeType": "text/plain"
+        }
+    }
 
-    file_index = 0
-    for chunk in client.models.generate_content_stream(
-        model=model,
-        contents=contents,
-        config=generate_content_config,
-    ):
-        if (
-            chunk.candidates is None
-            or chunk.candidates[0].content is None
-            or chunk.candidates[0].content.parts is None
-        ):
-            continue
-        if chunk.candidates[0].content.parts[0].inline_data and chunk.candidates[0].content.parts[0].inline_data.data:
-            file_name = f"ENTER_FILE_NAME_{file_index}"
-            file_index += 1
-            inline_data = chunk.candidates[0].content.parts[0].inline_data
-            data_buffer = inline_data.data
-            file_extension = mimetypes.guess_extension(inline_data.mime_type)
-            save_binary_file(f"{file_name}{file_extension}", data_buffer)
-        else:
-            print(chunk.text)
+    # 4. Make the API call.
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        
+        result = response.json()
+        candidate = result.get('candidates', [{}])[0]
+        text_response = candidate.get('content', {}).get('parts', [{}])[0].get('text', 'No response found.')
+        
+        return text_response
+        
+    except requests.exceptions.RequestException as e:
+        print(f"API request failed: {e}")
+        sys.exit(1)
 
+def main():
+    """
+    Main function to handle command-line arguments and script execution.
+    """
+    # 1. Check for correct command-line arguments.
+    if len(sys.argv) != 3:
+        print("Usage: python image_analyzer.py <input_text_file_path> <output_file_path>")
+        sys.exit(1)
+
+    input_file_path = sys.argv[1]
+    output_file_path = sys.argv[2]
+    
+    # 2. Call the AI model and get the response.
+    print("Sending text to Gemini 2.5 for analysis...")
+    ai_result = generate_text(input_file_path, PROMPT)
+    print("Analysis complete. Writing result to file...")
+    
+    # 3. Write the response to the output file.
+    with open(output_file_path, "w", encoding="utf-8") as output_file:
+        output_file.write(ai_result)
+    
+    print(f"Successfully wrote the AI's analysis to '{output_file_path}'.")
+
+# Run the script
 if __name__ == "__main__":
-    generate()
+    main()
