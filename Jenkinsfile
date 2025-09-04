@@ -31,7 +31,7 @@ pipeline {
                 // This stage is for running your tests.
                 // Replace 'echo' with your actual test command.
                 echo 'Running tests...'
-                sh 'echo "This is a placeholder for your test command."'
+                sh './coverage.sh'
             }
         }
         
