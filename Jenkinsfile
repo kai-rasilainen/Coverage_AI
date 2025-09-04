@@ -5,6 +5,12 @@ pipeline {
     // 'agent any' means Jenkins can run this pipeline on any available build agent.
     agent any
 
+    environment {
+        // Add the Homebrew bin directory to the PATH so that Jenkins can find
+        // tools like 'lcov' and 'genhtml'.
+        PATH = "/opt/homebrew/bin:${env.PATH}"
+    }
+    
     // The 'stages' block contains the logical divisions of your build process.
     stages {
         stage('Checkout Code') {
