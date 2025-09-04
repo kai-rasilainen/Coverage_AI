@@ -3,7 +3,7 @@ CXX = g++
 GCOV_FLAGS = --coverage
 CXXFLAGS = -std=c++17 -Wall -Wextra -I./src
 CXXFLAGS_GTEST = -std=c++17 -Wall -Wextra -I./src -I /usr/include/gtest/
-GTEST = /usr/local/lib/libgtest.a
+GTEST = /opt/homebrew/lib/libgtest.a
 SRC = src/main.cpp src/number_to_string.cpp
 BUILD_DIR = build
 TARGET = $(BUILD_DIR)/main

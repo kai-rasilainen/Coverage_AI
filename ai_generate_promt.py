@@ -16,7 +16,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Your prompt for the AI model.
 # Edit this string to change the AI's instructions.
-PROMPT = "Read Jenkins console test.txt file and provide a detailed analysis of its" \
+PROMPT = "Read Jenkins console output file and provide a detailed analysis of its" \
 " content. Write your analysis in a clear and structured manner. Focus on errors and problems, and find solution to them."
 
 def generate_text(input_path, prompt):
