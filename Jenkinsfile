@@ -35,12 +35,22 @@ pipeline {
             }
         }
         
-        stage('Run Python Script') {
+        stage('Analyze Console Log with Gemini') {
             steps {
-                // This step runs the Python script that uses the Gemini API.
-                // It uses withCredentials to expose the GEMINI_API_KEY as an environment variable.
-                withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
-                    sh 'python3 ai_generate_promt.py'
+                script {
+                    // Dynamically get the paths for the build log and output file
+                    def jenkinsHome = "/Users/rasilainen/.jenkins"
+                    def jobName = "${env.JOB_NAME}"
+                    def buildNumber = "${env.BUILD_NUMBER}"
+                    def logPath = "${jenkinsHome}/jobs/${jobName}/builds/${buildNumber}/log"
+                    def outputPath = "${jobName}_build_${buildNumber}_analysis.txt"
+                    
+                    // Use a withCredentials block to securely provide the API key
+                    withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
+                        echo "Analyzing Jenkins console log file..."
+                        // Correctly run the Python script with python3 and pass the log path and output path as arguments
+                        sh "python3 ai_generate_promt.py '${logPath}' '${outputPath}'"
+                    }
                 }
             }
         }
@@ -65,7 +75,7 @@ pipeline {
         always {
             echo 'This will always run, regardless of the build status.'
             // Commands here will execute even if the build was successful or failed.
-            sh "python3 ai_generate_promt.py /Users/rasilainen/.jenkins/jobs/Coverage_AI_pipeline/builds/${env.BUILD_NUMBER}/log output.txt"
+            //sh "python3 ai_generate_promt.py /Users/rasilainen/.jenkins/jobs/Coverage_AI_pipeline/builds/${env.BUILD_NUMBER}/log output.txt"
         }
     }
 }
