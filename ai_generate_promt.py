@@ -2,7 +2,7 @@
 # It requires the 'requests' library, which can be installed with:
 # pip install requests
 #
-# Usage: python ai_generate_promt.py <input_text_file_path> <output_file_path>
+# Usage: python3 ai_generate_promt.py <input_text_file_path> <output_file_path>
 
 import os
 import sys
@@ -14,15 +14,11 @@ import json
 PROMPT = "Read Jenkins console output file and provide a detailed analysis of its" \
 " content. Write your analysis in a clear and structured manner. Focus on errors and problems, and find solution to them."
 
-def generate_text(input_path, prompt):
+def generate_text(input_path, prompt, gemini_api_key):
     """
     Sends a text file and a prompt to the Gemini 2.5 API for text generation.
     Returns the AI's text response.
     """
-    # 1. Load the API key from an environment variable.
-    # This is the correct way to load a key from a Jenkins withCredentials block.
-    gemini_api_key = os.getenv("GEMINI_API_KEY")
-
     if not gemini_api_key:
         print("Error: GEMINI_API_KEY environment variable not set.")
         sys.exit(1)
@@ -71,14 +67,17 @@ def main():
     Main function to handle command-line arguments and script execution.
     """
     if len(sys.argv) != 3:
-        print("Usage: python ai_generate_promt.py <input_text_file_path> <output_file_path>")
+        print("Usage: python3 ai_generate_promt.py <input_text_file_path> <output_file_path>")
         sys.exit(1)
+
+    # Load the API key from an environment variable.
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
 
     input_file_path = sys.argv[1]
     output_file_path = sys.argv[2]
     
     print("Sending text to Gemini 2.5 for analysis...")
-    ai_result = generate_text(input_file_path, PROMPT)
+    ai_result = generate_text(input_file_path, PROMPT, gemini_api_key)
     print("Analysis complete. Writing result to file...")
     
     with open(output_file_path, "w", encoding="utf-8") as output_file:

@@ -40,7 +40,7 @@ pipeline {
                 // This step runs the Python script that uses the Gemini API.
                 // It uses withCredentials to expose the GEMINI_API_KEY as an environment variable.
                 withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
-                    sh 'python ai_generate_promt.py'
+                    sh 'python3 ai_generate_promt.py'
                 }
             }
         }
