@@ -34,6 +34,16 @@ pipeline {
                 sh 'echo "This is a placeholder for your test command."'
             }
         }
+        
+        stage('Run Python Script') {
+            steps {
+                // This step runs the Python script that uses the Gemini API.
+                // It uses withCredentials to expose the GEMINI_API_KEY as an environment variable.
+                withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
+                    sh 'python ai_generate_promt.py'
+                }
+            }
+        }
     }
     
     // The 'post' block defines actions to be performed after the main stages have finished.
