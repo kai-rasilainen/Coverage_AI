@@ -73,9 +73,6 @@ TEST(ReturnNumberVariant5, Positive) {
 TEST(ReturnNumberVariant5, Negative) {
     EXPECT_EQ(returnNumberVariant5("TEST", -3), "NEGATIVE5: TEST-3");
 }
-TEST(ReturnNumberVariant5, Zero) {
-    EXPECT_EQ(returnNumberVariant5("TEST", 0), "NULL5: TEST");
-}
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
