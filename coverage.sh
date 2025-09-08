@@ -22,7 +22,7 @@ mkdir -p ${REPORT_DIR}
 # Step 3: Capture coverage data from the build directory into a single .info file.
 # We include flags to ignore common errors and warnings that can occur during the capture process.
 echo "Capturing coverage data..."
-lcov --capture --directory ${BUILD_DIR} --output-file ${COVERAGE_INFO} --ignore-errors mismatched,unsupported,inconsistent,mismatch
+lcov --capture --directory ${BUILD_DIR} --output-file ${COVERAGE_INFO} --ignore-errors mismatched,unsupported,inconsistent,mismatch --rc lcov_branch_coverage=1 --rc geninfo_unexecuted_blocks=1
 
 # Step 4: Remove irrelevant coverage data (e.g., system headers and test files themselves)
 # to focus the report solely on the application code.
