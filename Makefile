@@ -1,28 +1,60 @@
-
+# C++ Compiler
 CXX = g++
+
+# GCOV Flags for Test Coverage
 GCOV_FLAGS = --coverage
-CXXFLAGS = -std=c++17 -Wall -Wextra -I./src
-CXXFLAGS_GTEST = -std=c++17 -Wall -Wextra -I./src -I /usr/src/gtest/
-GTEST = /usr/src/gtest/libgtest.a
-SRC = src/main.cpp src/number_to_string.cpp
+
+# Common Compiler Flags
+CXXFLAGS = -std=c++17 -Wall -Wextra
+
+# Include path for your source files
+INCLUDE_PATH = -I./src
+
+# Include and Library paths for Google Test
+# -I: points to the directory containing the gtest/gtest.h header
+# -L: points to the directory containing the libgtest.a library file
+GTEST_INCLUDE_PATH = -I/usr/src/gtest/googletest/include
+GTEST_LIB_PATH = -L/usr/src/gtest/build/lib
+
+# Linker flags for GTest
+# -l: specifies the name of the library to link against (gtest).
+# `pthread` is required for Google Test to work correctly.
+GTEST_LDFLAGS = -lgtest -lgtest_main -lpthread
+
+# Build directories
 BUILD_DIR = build
-TARGET = $(BUILD_DIR)/main
-TEST_SRC = tests/test_number_to_string.cpp src/number_to_string.cpp
-TEST_BINARY = $(BUILD_DIR)/test_number_to_string
-TEST_BUILD = tests
+SRC_DIR = src
+TEST_DIR = tests
 
-all: $(BUILD_DIR) $(TARGET) $(TEST_BUILD)
+# Main source files and executable
+MAIN_SRC = $(SRC_DIR)/main.cpp $(SRC_DIR)/number_to_string.cpp
+MAIN_TARGET = $(BUILD_DIR)/main
 
+# Test source files and executable
+TEST_SRC = $(TEST_DIR)/test_number_to_string.cpp $(SRC_DIR)/number_to_string.cpp
+TEST_TARGET = $(BUILD_DIR)/test_number_to_string
+
+.PHONY: all clean test
+
+# Default target
+all: $(MAIN_TARGET)
+
+# Compile the main application
+$(MAIN_TARGET): $(MAIN_SRC) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDE_PATH) $^ -o $@
+
+# Compile the test executable
+$(TEST_TARGET): $(TEST_SRC) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(GCOV_FLAGS) $(GTEST_INCLUDE_PATH) $(GTEST_LIB_PATH) $^ -o $@ $(GTEST_LDFLAGS)
+
+# Rule to build the test executable and run tests
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
+
+# Create build directory
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(TARGET): $(SRC)
-	$(CXX) $(CXXFLAGS) -o $@ $(SRC)
-
-$(TEST_BUILD): $(TEST_BINARY)
-
-$(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
-	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) -o $@ $(TEST_SRC) $(GTEST)
-
+# Clean up built files
 clean:
 	rm -rf $(BUILD_DIR)
