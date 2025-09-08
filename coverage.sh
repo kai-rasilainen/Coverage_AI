@@ -3,52 +3,38 @@
 # Define directories for clarity and easy modification
 BUILD_DIR=build
 REPORT_DIR=reports
+COVERAGE_INFO=${REPORT_DIR}/coverage.info
 
 # Ensure the build directory exists and tests are compiled
 make test || { echo "Error: make test failed. Please fix compilation issues before running coverage." ; exit 1; }
 
-# Get the list of all individual tests to run
-# The awk command correctly parses the gtest_list_tests output
-test_list=$(./${BUILD_DIR}/test_number_to_string --gtest_list_tests | awk '/^[^ ]/ {suite=$1} /^[ ]/ {print suite $1}')
+# Step 1: Clean all old coverage data (.gcda files) to ensure a clean slate for the report.
+echo "Cleaning old coverage data..."
+find ${BUILD_DIR} -name "*.gcda" -delete
 
-# Check if the test list is empty, which indicates a problem
-if [ -z "$test_list" ]; then
-    echo "Error: Could not retrieve test list from build/test_number_to_string. Is the executable present and working?"
-    exit 1
-fi
+# Step 2: Run all tests in a single execution to accumulate a comprehensive coverage dataset.
+echo "Running all tests to generate aggregate coverage data..."
+./${BUILD_DIR}/test_number_to_string
 
 # Create the main reports directory
 mkdir -p ${REPORT_DIR}
 
-for test_case_name in $test_list; do
-    # Define a unique directory for each test's report
-    COVERAGE_DIR=${REPORT_DIR}/coverage_report_${test_case_name}
-    COVERAGE_INFO=${COVERAGE_DIR}/coverage.info
+# Step 3: Capture coverage data from the build directory into a single .info file.
+# We include flags to ignore common errors and warnings that can occur during the capture process.
+echo "Capturing coverage data..."
+lcov --capture --directory ${BUILD_DIR} --output-file ${COVERAGE_INFO} --ignore-errors mismatched,unsupported,inconsistent,mismatch
 
-    # Clean up previous report and create a new directory
-    rm -fr ${COVERAGE_DIR}
-    mkdir -p ${COVERAGE_DIR}
+# Step 4: Remove irrelevant coverage data (e.g., system headers and test files themselves)
+# to focus the report solely on the application code.
+echo "Filtering irrelevant files from the coverage report..."
+lcov --remove ${COVERAGE_INFO} '/usr/*' '*/tests/*' --output-file ${COVERAGE_INFO}
 
-    echo "Running test: ${test_case_name} and generating report in ${COVERAGE_DIR}"
+# Step 5: Generate the final HTML report from the aggregated data.
+echo "Generating HTML report..."
+genhtml ${COVERAGE_INFO} --output-directory ${REPORT_DIR} --ignore-errors source,unsupported,empty
 
-    # Clear previous counter data from all files
-    lcov --directory ${BUILD_DIR} --zerocounters
+echo "Aggregated coverage report generated in ${REPORT_DIR}/index.html"
 
-    # Run a single test case using --gtest_filter
-    ./${BUILD_DIR}/test_number_to_string --gtest_filter="${test_case_name}"
 
-    # Capture coverage data from the build directory
-    # I've included the most common flags to suppress typical geninfo warnings
-    lcov --capture --directory ${BUILD_DIR} --output-file ${COVERAGE_INFO} --ignore-errors mismatched,unsupported,inconsistent,mismatch
-
-    # Remove irrelevant coverage data (system includes, tests directory)
-    lcov --remove ${COVERAGE_INFO} '/usr/*' '*/tests/*' --output-file ${COVERAGE_INFO}
-
-    # Generate the HTML report
-    # The --ignore-errors flag in genhtml takes specific error types.
-    genhtml ${COVERAGE_INFO} --output-directory ${COVERAGE_DIR} --ignore-errors source,unsupported,empty
-
-    echo "Coverage report for ${test_case_name} generated in ${COVERAGE_DIR}/index.html"
-done
 
 
