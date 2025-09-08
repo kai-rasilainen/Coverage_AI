@@ -1,6 +1,6 @@
 #!/bin/bash
 
-make tests
+make test
 test_list=$(build/test_number_to_string --gtest_list_tests | awk '/^[^ ]/ {suite=$1} /^[ ]/ {print suite $1}')
 
 BUILD_DIR=build
