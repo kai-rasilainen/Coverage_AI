@@ -8,7 +8,7 @@ pipeline {
     environment {
         // Add the Homebrew bin directory to the PATH so that Jenkins can find
         // tools like 'lcov' and 'genhtml'.
-        PATH = "/opt/homebrew/bin:${env.PATH}"
+        PATH = "/var/lib:${env.PATH}"
     }
     
     // The 'stages' block contains the logical divisions of your build process.
