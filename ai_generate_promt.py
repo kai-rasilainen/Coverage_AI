@@ -13,7 +13,8 @@ import json
 # Edit this string to change the AI's instructions.
 PROMPT = "Read Jenkins console output file and provide a detailed analysis of its" \
 " content. Write your analysis in a clear and structured manner. In addition," \
-" check coverage issues and provide test case source code to improve code coverage."
+" check coverage issues and write test case source code to improve code coverage" \
+" in the same style as in test_number_to_string.cpp file."
 
 def generate_text(input_path, prompt, gemini_api_key):
     """
