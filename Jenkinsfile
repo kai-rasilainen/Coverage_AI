@@ -45,7 +45,7 @@ pipeline {
             steps {
                 script {
                     // Dynamically get the paths for the build log and output file
-                    def jenkinsHome = "/Users/rasilainen/.jenkins"
+                    def jenkinsHome = "/var/lib/jenkins"
                     def jobName = "${env.JOB_NAME}"
                     def buildNumber = "${env.BUILD_NUMBER}"
                     def logPath = "${jenkinsHome}/jobs/${jobName}/builds/${buildNumber}/log"
