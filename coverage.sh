@@ -32,20 +32,23 @@ for test_case_name in $test_list; do
     echo "Running test: ${test_case_name} and generating report in ${COVERAGE_DIR}"
 
     # Clear previous counter data from all files
-    lcov --directory ${BUILD_DIR} --zerocounters > /dev/null
+    lcov --directory ${BUILD_DIR} --zerocounters
 
     # Run a single test case using --gtest_filter
     ./${BUILD_DIR}/test_number_to_string --gtest_filter="${test_case_name}"
 
     # Capture coverage data from the build directory
     # I've included the most common flags to suppress typical geninfo warnings
-    lcov --capture --directory ${BUILD_DIR} --output-file ${COVERAGE_INFO} --ignore-errors mismatched,unsupported,inconsistent > /dev/null
+    lcov --capture --directory ${BUILD_DIR} --output-file ${COVERAGE_INFO} --ignore-errors mismatched,unsupported,inconsistent,mismatch
 
     # Remove irrelevant coverage data (system includes, tests directory)
-    lcov --remove ${COVERAGE_INFO} '/usr/*' '*/tests/*' --output-file ${COVERAGE_INFO} > /dev/null
+    lcov --remove ${COVERAGE_INFO} '/usr/*' '*/tests/*' --output-file ${COVERAGE_INFO}
 
     # Generate the HTML report
-    genhtml ${COVERAGE_INFO} --output-directory ${COVERAGE_DIR} --ignore-errors missing > /dev/null
-    
+    # The --ignore-errors flag in genhtml takes specific error types.
+    genhtml ${COVERAGE_INFO} --output-directory ${COVERAGE_DIR} --ignore-errors source,unsupported,empty
+
     echo "Coverage report for ${test_case_name} generated in ${COVERAGE_DIR}/index.html"
 done
+
+
