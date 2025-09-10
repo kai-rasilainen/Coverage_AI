@@ -14,11 +14,14 @@ pipeline {
 
         string(
             name: 'prompt_coverage', 
-            defaultValue: """Read coverage report files and check coverage issues and write test case source code to output_file to improve code coverage in the same style as in test_number_to_string.cpp file.""",
+            defaultValue: """Provide a C++ test case to improve code coverage for the provided coverage report. Use the Google Test framework and the same style as test_number_to_string.cpp.""",
             description: 'The coverage prompt to pass to the script.')
     }
 
     environment {
+        // Set the timezone for the build to ensure consistent timestamps.
+        TZ = 'Europe/Helsinki'
+
         // Add the directory to the PATH so that Jenkins can find
         // tools like 'lcov' and 'genhtml'.
         PATH = "/var/lib:${env.PATH}"
