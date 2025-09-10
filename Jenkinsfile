@@ -9,15 +9,12 @@ pipeline {
     parameters {
         string(
             name: 'prompt_console', 
-            defaultValue: "Read Jenkins console output file and provide a detailed " \
-                        "analysis of its content. Write your analysis in a clear and structured manner.",
+            defaultValue: """Read Jenkins console output file and provide a detailed analysis of its content. Write your analysis in a clear and structured manner.""",
             description: 'The console prompt to pass to the script.'),
 
         string(
             name: 'prompt_coverage', 
-            defaultValue: "Read coverage report files and check coverage issues " \
-                        "and write test case source code to output_file to improve code coverage " \
-                        "in the same style as in test_number_to_string.cpp file.",
+            defaultValue: """Read coverage report files and check coverage issues and write test case source code to output_file to improve code coverage in the same style as in test_number_to_string.cpp file.""",
             description: 'The coverage prompt to pass to the script.')
     }
 
