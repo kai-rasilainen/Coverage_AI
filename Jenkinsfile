@@ -4,13 +4,6 @@
 pipeline {
     // 'agent any' means Jenkins can run this pipeline on any available build agent.
     agent any
-
-    def prompt_console = "Read Jenkins console output file and provide a detailed " \
-        "analysis of its content. Write your analysis in a clear and structured manner."
-    
-    def prompt_coverage = "Read Jenkins console output file and check coverage issues " \
-        "and write test case source code to output_file to improve code coverage " \
-        "in the same style as in test_number_to_string.cpp file."
     
     environment {
         // Add the directory to the PATH so that Jenkins can find
@@ -57,7 +50,8 @@ pipeline {
                     def buildNumber = "${env.BUILD_NUMBER}"
                     def logPath = "${jenkinsHome}/jobs/${jobName}/builds/${buildNumber}/log"
                     def outputPath = "build_${buildNumber}_console_analysis.txt"
-
+                    def prompt_console = "Read Jenkins console output file and provide a detailed " \
+                        "analysis of its content. Write your analysis in a clear and structured manner."
                     // Use a withCredentials block to securely provide the API key
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing Jenkins console log file..."
@@ -75,7 +69,9 @@ pipeline {
                     def buildNumber = "${env.BUILD_NUMBER}"
                     def logPath = "${jenkinsHome}/jobs/${jobName}/builds/${buildNumber}/log"
                     def outputPath = "build_${buildNumber}_coverage_analysis.txt"
-
+                    def prompt_coverage = "Read Jenkins console output file and check coverage issues " \
+                        "and write test case source code to output_file to improve code coverage " \
+                        "in the same style as in test_number_to_string.cpp file."
                     // Use a withCredentials block to securely provide the API key
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing coverage files..."
