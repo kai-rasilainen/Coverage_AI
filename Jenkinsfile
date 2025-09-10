@@ -68,7 +68,7 @@ pipeline {
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing Jenkins console log file..."
                         // Correctly run the Python script with python3 and pass the log path and output path as arguments
-                        sh "python3 ai_generate_promt.py '${prompt_console}' '${logPath}' '${outputPath}'"
+                        sh "python3 ai_generate_promt.py '${params.prompt_console}' '${logPath}' '${outputPath}'"
                     }
                 }
             }
@@ -87,7 +87,7 @@ pipeline {
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing coverage files..."
                         // Correctly run the Python script with python3 and pass the log path and output path as arguments
-                        sh "python3 ai_generate_promt.py '${prompt_coverage}' '${logPath}' '${outputPath}'"
+                        sh "python3 ai_generate_promt.py '${params.prompt_coverage}' '${logPath}' '${outputPath}'"
                     }
                 }
             }
