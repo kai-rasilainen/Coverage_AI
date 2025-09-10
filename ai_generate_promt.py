@@ -17,7 +17,7 @@ import json
 " in the same style as in test_number_to_string.cpp file." """
 
 PROMPT = "Read Jenkins console output file and check coverage issues and write " \
-" test case source code to improve code coverage" \
+" test case source code to output_file to improve code coverage" \
 " in the same style as in test_number_to_string.cpp file."
 
 def generate_text(input_path, prompt, gemini_api_key):
