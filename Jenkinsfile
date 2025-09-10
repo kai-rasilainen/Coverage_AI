@@ -5,8 +5,15 @@ pipeline {
     // 'agent any' means Jenkins can run this pipeline on any available build agent.
     agent any
 
+    def prompt_console = "Read Jenkins console output file and provide a detailed " \
+        "analysis of its content. Write your analysis in a clear and structured manner."
+    
+    def prompt_coverage = "Read Jenkins console output file and check coverage issues " \
+        "and write test case source code to output_file to improve code coverage " \
+        "in the same style as in test_number_to_string.cpp file."
+    
     environment {
-        // Add the Homebrew bin directory to the PATH so that Jenkins can find
+        // Add the directory to the PATH so that Jenkins can find
         // tools like 'lcov' and 'genhtml'.
         PATH = "/var/lib:${env.PATH}"
     }
@@ -49,15 +56,32 @@ pipeline {
                     def jobName = "${env.JOB_NAME}"
                     def buildNumber = "${env.BUILD_NUMBER}"
                     def logPath = "${jenkinsHome}/jobs/${jobName}/builds/${buildNumber}/log"
-                    def outputPath = "${jobName}_build_${buildNumber}_analysis.txt"
-                    
+                    def outputPath = "build_${buildNumber}_console_analysis.txt"
+
                     // Use a withCredentials block to securely provide the API key
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing Jenkins console log file..."
                         // Correctly run the Python script with python3 and pass the log path and output path as arguments
-                        sh "python3 ai_generate_promt.py '${logPath}' '${outputPath}'"
+                        sh "python3 ai_generate_promt.py '${prompt_console}' '${logPath}' '${outputPath}'"
                     }
                 }
+            }
+        }
+        stage('Analyze Coverage Report') {
+            steps {
+                    // Dynamically get the paths for the build log and output file
+                    def jenkinsHome = "/var/lib/jenkins"
+                    def jobName = "${env.JOB_NAME}"
+                    def buildNumber = "${env.BUILD_NUMBER}"
+                    def logPath = "${jenkinsHome}/jobs/${jobName}/builds/${buildNumber}/log"
+                    def outputPath = "build_${buildNumber}_coverage_analysis.txt"
+
+                    // Use a withCredentials block to securely provide the API key
+                    withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
+                        echo "Analyzing coverage files..."
+                        // Correctly run the Python script with python3 and pass the log path and output path as arguments
+                        sh "python3 ai_generate_promt.py '${prompt_coverage}' '${logPath}' '${outputPath}'"
+                    }
             }
         }
     }

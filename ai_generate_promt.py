@@ -2,23 +2,12 @@
 # It requires the 'requests' library, which can be installed with:
 # pip install requests
 #
-# Usage: python3 ai_generate_promt.py <input_text_file_path> <output_file_path>
+# Usage: python3 ai_generate_promt.py <prompt> <input_text_file_path> <output_file_path>
 
 import os
 import sys
 import requests
 import json
-
-# Your prompt for the AI model.
-# Edit this string to change the AI's instructions.
-""" PROMPT = "Read Jenkins console output file and provide a detailed analysis of its" \
-" content. Write your analysis in a clear and structured manner. In addition," \
-" check coverage issues and write test case source code to improve code coverage" \
-" in the same style as in test_number_to_string.cpp file." """
-
-PROMPT = "Read Jenkins console output file and check coverage issues and write " \
-" test case source code to output_file to improve code coverage" \
-" in the same style as in test_number_to_string.cpp file."
 
 def generate_text(input_path, prompt, gemini_api_key):
     """
@@ -72,18 +61,19 @@ def main():
     """
     Main function to handle command-line arguments and script execution.
     """
-    if len(sys.argv) != 3:
-        print("Usage: python3 ai_generate_promt.py <input_text_file_path> <output_file_path>")
+    if len(sys.argv) != 4:
+        print("Usage: python3 ai_generate_promt.py <prompt> <input_text_file_path> <output_file_path>")
         sys.exit(1)
 
     # Load the API key from an environment variable.
     gemini_api_key = os.getenv("GEMINI_API_KEY")
 
-    input_file_path = sys.argv[1]
-    output_file_path = sys.argv[2]
+    prompt = sys.argv[1]
+    input_file_path = sys.argv[2]
+    output_file_path = sys.argv[3]
     
     print("Sending text to Gemini 2.5 for analysis...")
-    ai_result = generate_text(input_file_path, PROMPT, gemini_api_key)
+    ai_result = generate_text(input_file_path, prompt, gemini_api_key)
     print("Analysis complete. Writing result to file...")
     
     with open(output_file_path, "w", encoding="utf-8") as output_file:
