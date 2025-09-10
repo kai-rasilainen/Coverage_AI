@@ -62,7 +62,8 @@ pipeline {
             }
         }
         stage('Analyze Coverage Report') {
-            steps {
+            steps { 
+                script {
                     // Dynamically get the paths for the build log and output file
                     def jenkinsHome = "/var/lib/jenkins"
                     def jobName = "${env.JOB_NAME}"
@@ -78,6 +79,7 @@ pipeline {
                         // Correctly run the Python script with python3 and pass the log path and output path as arguments
                         sh "python3 ai_generate_promt.py '${prompt_coverage}' '${logPath}' '${outputPath}'"
                     }
+                }
             }
         }
     }
