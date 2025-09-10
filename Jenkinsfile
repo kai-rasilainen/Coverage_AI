@@ -10,7 +10,7 @@ pipeline {
         string(
             name: 'prompt_console', 
             defaultValue: """Read Jenkins console output file and provide a detailed analysis of its content. Write your analysis in a clear and structured manner.""",
-            description: 'The console prompt to pass to the script.'),
+            description: 'The console prompt to pass to the script.')
 
         string(
             name: 'prompt_coverage', 
