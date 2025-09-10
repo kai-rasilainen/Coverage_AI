@@ -1,85 +1,83 @@
-# This script uses the Google Gemini 2.5 API to analyze a text file and save the AI's response to a file.
-# It requires the 'requests' library, which can be installed with:
-# pip install requests
-#
-# Usage: python3 ai_generate_promt.py <prompt> <input_text_file_path> <output_file_path>
-
 import os
 import sys
-import requests
 import json
+import base64
+import time
+import requests
 
-def generate_text(input_path, prompt, gemini_api_key):
-    """
-    Sends a text file and a prompt to the Gemini 2.5 API for text generation.
-    Returns the AI's text response.
-    """
-    if not gemini_api_key:
-        print("Error: GEMINI_API_KEY environment variable not set.")
-        sys.exit(1)
+def get_gemini_api_key():
+    """Retrieves the Gemini API key from environment variables."""
+    return os.environ.get('GEMINI_API_KEY', '')
 
-    # 2. Read the input text file.
-    try:
-        with open(input_path, "r", encoding="utf-8") as input_file:
-            input_text = input_file.read()
-    except FileNotFoundError:
-        print(f"Error: The input file '{input_path}' was not found.")
-        sys.exit(1)
-
-    # 3. Construct the API request payload.
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={gemini_api_key}"
+def generate_content(prompt, api_key):
+    """Calls the Gemini API to generate text content."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={api_key}"
+    headers = {
+        'Content-Type': 'application/json',
+    }
     payload = {
-        "contents": [
+        'contents': [
             {
-                "parts": [
-                    {"text": prompt + "\n\n" + input_text}
+                'parts': [
+                    {'text': prompt}
                 ]
             }
-        ],
-        "generationConfig": {
-            "responseMimeType": "text/plain"
-        },
-        "tools": [{"google_search": {}}]
+        ]
     }
+    
+    # Use exponential backoff to handle potential rate-limiting.
+    for i in range(5):
+        try:
+            response = requests.post(url, headers=headers, data=json.dumps(payload))
+            response.raise_for_status() # Raise an exception for bad status codes
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429: # Too Many Requests
+                sleep_time = 2 ** i # Exponential backoff
+                print(f"Rate limit exceeded. Retrying in {sleep_time} seconds...")
+                time.sleep(sleep_time)
+            else:
+                print(f"HTTP Error: {e.response.status_code} - {e.response.text}")
+                return None
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
+    return None
 
-    # 4. Make the API call.
+def write_to_file(file_path, content):
+    """Writes the generated content to a file."""
     try:
-        response = requests.post(url, json=payload)
-        response.raise_for_status()
-        
-        result = response.json()
-        candidate = result.get('candidates', [{}])[0]
-        text_response = candidate.get('content', {}).get('parts', [{}])[0].get('text', 'No response found.')
-        
-        return text_response
-        
-    except requests.exceptions.RequestException as e:
-        print(f"API request failed: {e}")
-        sys.exit(1)
+        with open(file_path, 'w') as f:
+            f.write(content)
+        print(f"Content successfully written to {file_path}")
+    except IOError as e:
+        print(f"Error writing to file {file_path}: {e}")
 
-def main():
-    """
-    Main function to handle command-line arguments and script execution.
-    """
-    if len(sys.argv) != 4:
-        print("Usage: python3 ai_generate_promt.py <prompt> <input_text_file_path> <output_file_path>")
+if __name__ == '__main__':
+    # Ensure all required arguments are provided
+    if len(sys.argv) < 4:
+        print("Usage: python3 ai_generate_promt.py <prompt> <log_path> <output_path>")
         sys.exit(1)
-
-    # Load the API key from an environment variable.
-    gemini_api_key = os.getenv("GEMINI_API_KEY")
 
     prompt = sys.argv[1]
-    input_file_path = sys.argv[2]
-    output_file_path = sys.argv[3]
-    
-    print("Sending text to Gemini 2.5 for analysis...")
-    ai_result = generate_text(input_file_path, prompt, gemini_api_key)
-    print("Analysis complete. Writing result to file...")
-    
-    with open(output_file_path, "w", encoding="utf-8") as output_file:
-        output_file.write(ai_result)
-    
-    print(f"Successfully wrote the AI's analysis to '{output_file_path}'.")
+    log_path = sys.argv[2]
+    output_path = sys.argv[3]
+    api_key = get_gemini_api_key()
 
-if __name__ == "__main__":
-    main()
+    if not api_key:
+        print("API key not found. Please set the GEMINI_API_KEY environment variable.")
+        sys.exit(1)
+
+    # Note: The prompt itself contains the necessary context.
+    # The log_path and other parameters are not currently used in this version.
+    # If the AI needs context from the log, the prompt must be constructed to include it.
+
+    # Call the AI to generate content based on the prompt
+    response_data = generate_content(prompt, api_key)
+
+    if response_data and 'candidates' in response_data and len(response_data['candidates']) > 0:
+        generated_text = response_data['candidates'][0]['content']['parts'][0]['text']
+        write_to_file(output_path, generated_text)
+    else:
+        print("Failed to get a valid response from the Gemini API.")
+
