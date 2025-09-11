@@ -111,6 +111,8 @@ pipeline {
                 script {
                     echo 'Creating a new test file with the generated code...'
                     def testCaseCode = readFile(file: "build_${env.BUILD_NUMBER}_coverage_analysis.txt")
+                    // Clean up the string by removing the markdown code block tags.
+                    testCaseCode = testCaseCode.replaceAll('```cpp', '').replaceAll('```', '').trim()
                     writeFile(file: "tests/ai_created_test_case.cpp", text: testCaseCode)
                 }
             }
