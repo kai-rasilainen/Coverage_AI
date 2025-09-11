@@ -105,6 +105,16 @@ pipeline {
                 }
             }
         }
+
+        stage('Create New Test File') {
+            steps {
+                script {
+                    echo 'Creating a new test file with the generated code...'
+                    def testCaseCode = readFile(file: "build_${env.BUILD_NUMBER}_coverage_analysis.txt")
+                    writeFile(file: "tests/ai_created_test_case.cpp", text: testCaseCode)
+                }
+            }
+        }
     }
     
     // The 'post' block defines actions to be performed after the main stages have finished.
