@@ -85,12 +85,22 @@ pipeline {
                     def buildNumber = "${env.BUILD_NUMBER}"
                     def logPath = "${jenkinsHome}/jobs/${jobName}/builds/${buildNumber}/log"
                     def outputPath = "build_${buildNumber}_coverage_analysis.txt"
-                    
+                    def coverageReportContent = readFile(file: "reports/index.html")
+                    def prompt = """
+                    Analyze the following HTML code coverage report from lcov. 
+                    Identify the lines of code that are not covered by tests and write a C++ test case using the Google Test framework to cover those lines.
+                    The new test case should be in the same style as test_number_to_string.cpp.
+
+                    Coverage Report Content: ${coverageReportContent}
+
+                    Write only the C++ code for the new test case, and nothing else.
+                    """
+
                     // Use a withCredentials block to securely provide the API key
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing coverage files..."
                         // Correctly run the Python script with python3 and pass the log path and output path as arguments
-                        sh "python3 ai_generate_promt.py '${params.prompt_coverage}' '${logPath}' '${outputPath}'"
+                        sh "python3 ai_generate_promt.py "prompt" '${logPath}' '${outputPath}'"
                     }
                 }
             }
