@@ -125,23 +125,26 @@ pipeline {
                     def iteration = 0
                     def coverage = 0
 
-                    // FIX: Moved the initial file read outside the loop and stored the values to fix serialization.
-                    def coverageInfoContent = readFile(file: "reports/coverage.info")
-                    def lfMatcher = coverageInfoContent =~ /LF:(\d+)/
-                    def lhMatcher = coverageInfoContent =~ /LH:(\d+)/
-                    def linesFound = lfMatcher ? (lfMatcher[0][1] as int) : 0
-                    def linesHit = lhMatcher ? (lhMatcher[0][1] as int) : 0
-
+                    // FIX: This section has been moved inside the loop and corrected.
                     while (iteration < maxIterations) {
                         // Run coverage script to update reports
                         sh './coverage.sh'
 
                         // Reread the file inside the loop for updated data on each iteration
-                        coverageInfoContent = readFile(file: "reports/coverage.info")
-                        def newLfMatcher = coverageInfoContent =~ /LF:(\d+)/
-                        def newLhMatcher = coverageInfoContent =~ /LH:(\d+)/
-                        linesFound = newLfMatcher ? (newLfMatcher[0][1] as int) : 0
-                        linesHit = newLhMatcher ? (newLhMatcher[0][1] as int) : 0
+                        def coverageInfoContent = readFile(file: "reports/coverage.info")
+                        def linesFound = 0
+                        def linesHit = 0
+
+                        // Extract values and store them in serializable variables immediately.
+                        def lfMatcher = coverageInfoContent =~ /LF:(\d+)/
+                        if (lfMatcher) {
+                            linesFound = lfMatcher[0][1] as int
+                        }
+
+                        def lhMatcher = coverageInfoContent =~ /LH:(\d+)/
+                        if (lhMatcher) {
+                            linesHit = lhMatcher[0][1] as int
+                        }
                         
                         sh """
                           linesFound=${linesFound}
