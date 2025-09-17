@@ -124,31 +124,24 @@ pipeline {
                     def maxIterations = 10
                     def iteration = 0
                     def coverage = 0
-
-                    // FIX: This section has been moved inside the loop and corrected.
+                    
                     while (iteration < maxIterations) {
                         // Run coverage script to update reports
                         sh './coverage.sh'
 
                         // Reread the file inside the loop for updated data on each iteration
                         def coverageInfoContent = readFile(file: "reports/coverage.info")
-                        def linesFound = 0
-                        def linesHit = 0
-
-                        // Extract values and store them in serializable variables immediately.
-                        def lfMatcher = coverageInfoContent =~ /LF:(\d+)/
-                        if (lfMatcher) {
-                            linesFound = lfMatcher[0][1] as int
-                        }
-
-                        def lhMatcher = coverageInfoContent =~ /LH:(\d+)/
-                        if (lhMatcher) {
-                            linesHit = lhMatcher[0][1] as int
-                        }
+                        def coverageEnv
                         
-                        sh """
-                          linesFound=${linesFound}
-                          linesHit=${linesHit}
+                        sh("""
+                          linesFound=\$(grep -E "^LF:" reports/coverage.info | awk -F':' '{print \$2}')
+                          linesHit=\$(grep -E "^LH:" reports/coverage.info | awk -F':' '{print \$2}')
+                          if [ -z "\$linesFound" ]; then
+                            linesFound=0
+                          fi
+                          if [ -z "\$linesHit" ]; then
+                            linesHit=0
+                          fi
                           if [ \$linesFound -gt 0 ]; then
                             coverage=\$(echo "scale=2; (\$linesHit / \$linesFound) * 100" | bc)
                           else
@@ -156,12 +149,12 @@ pipeline {
                           fi
                           echo "Calculated coverage: \$coverage"
                           echo "coverage=\$coverage" > coverage.env
-                        """
-                        
-                        def coverageEnv = readProperties file: 'coverage.env'
+                        """)
+
+                        coverageEnv = readProperties file: 'coverage.env'
                         coverage = coverageEnv.coverage as Float
 
-                        if (linesFound == 0) {
+                        if (coverage == 0) {
                             error("Could not parse coverage percentage from report.")
                         }
 
