@@ -124,24 +124,33 @@ pipeline {
                     def maxIterations = 10
                     def iteration = 0
                     def coverage = 0
+                    def coverageInfoContent = readFile(file: "reports/coverage.info")
+                    def linesFound = 0
+                    def linesHit = 0
+
+                    def lfMatcher = coverageInfoContent =~ /LF:(\d+)/
+                    if (lfMatcher) {
+                        linesFound = lfMatcher[0][1] as int
+                    }
+
+                    def lhMatcher = coverageInfoContent =~ /LH:(\d+)/
+                    if (lhMatcher) {
+                        linesHit = lhMatcher[0][1] as int
+                    }
 
                     while (iteration < maxIterations) {
                         // Run coverage script to update reports
                         sh './coverage.sh'
+                        coverageInfoContent = readFile(file: "reports/coverage.info")
 
-                        // Parse coverage percentage from the .info file
-                        def coverageInfoContent = readFile(file: "reports/coverage.info")
-                        def linesFound = 0
-                        def linesHit = 0
-
-                        def lfMatcher = coverageInfoContent =~ /LF:(\d+)/
-                        if (lfMatcher) {
-                            linesFound = lfMatcher[0][1] as int
+                        def newLfMatcher = coverageInfoContent =~ /LF:(\d+)/
+                        if (newLfMatcher) {
+                            linesFound = newLfMatcher[0][1] as int
                         }
 
-                        def lhMatcher = coverageInfoContent =~ /LH:(\d+)/
-                        if (lhMatcher) {
-                            linesHit = lhMatcher[0][1] as int
+                        def newLhMatcher = coverageInfoContent =~ /LH:(\d+)/
+                        if (newLhMatcher) {
+                            linesHit = newLhMatcher[0][1] as int
                         }
                         
                         sh """
