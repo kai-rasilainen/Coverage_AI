@@ -129,11 +129,23 @@ pipeline {
                         // Run coverage script to update reports
                         sh './coverage.sh'
 
-                        // Parse coverage percentage from lcov report (assumes genhtml output in reports/index.html)
-                        def coverageReportContent = readFile(file: "reports/index.html")
-                        def matcher = coverageReportContent =~ /lines\.*: ([\d\.]+)%/
-                        if (matcher) {
-                            coverage = matcher[0][1] as float
+                        // Parse coverage percentage from the .info file
+                        def coverageInfoContent = readFile(file: "reports/coverage.info")
+                        def linesFound = 0
+                        def linesHit = 0
+
+                        def lfMatcher = coverageInfoContent =~ /LF:(\d+)/
+                        if (lfMatcher) {
+                            linesFound = lfMatcher[0][1] as int
+                        }
+
+                        def lhMatcher = coverageInfoContent =~ /LH:(\d+)/
+                        if (lhMatcher) {
+                            linesHit = lhMatcher[0][1] as int
+                        }
+
+                        if (linesFound > 0) {
+                            coverage = (linesHit.toFloat() / linesFound.toFloat()) * 100
                         } else {
                             error("Could not parse coverage percentage from report.")
                         }
