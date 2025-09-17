@@ -30,10 +30,14 @@ TEST_DIR = tests
 MAIN_SRC = $(SRC_DIR)/main.cpp $(SRC_DIR)/number_to_string.cpp
 MAIN_TARGET = $(BUILD_DIR)/main
 
-# Test source files and executable (FIXED)
+# Test source files and executable
 # This uses a wildcard to automatically find all test files in the directory.
-TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp) $(SRC_DIR)/number_to_string.cpp
+TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
+TEST_OBJ = $(TEST_SRC:.cpp=.o)
 TEST_TARGET = $(BUILD_DIR)/test_number_to_string
+
+# Application source files to be linked with tests
+APP_SRC_TO_TEST = $(SRC_DIR)/number_to_string.cpp
 
 .PHONY: all clean test coverage
 
@@ -45,8 +49,8 @@ $(MAIN_TARGET): $(MAIN_SRC) | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_PATH) $^ -o $@
 
 # Compile the test executable
-$(TEST_TARGET): $(TEST_SRC) | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(GCOV_FLAGS) $(GTEST_INCLUDE_PATH) $(GTEST_LIB_PATH) $^ -o $@ $(GTEST_LDFLAGS)
+$(TEST_TARGET): $(TEST_SRC) $(APP_SRC_TO_TEST) | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(GCOV_FLAGS) $(INCLUDE_PATH) $(GTEST_INCLUDE_PATH) $(GTEST_LIB_PATH) $^ -o $@ $(GTEST_LDFLAGS)
 
 # Rule to build the test executable and run tests
 test: $(TEST_TARGET)
