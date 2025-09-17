@@ -47,7 +47,7 @@ pipeline {
                 sh 'make coverage'
             }
         }
-        
+        /*
         stage('Test') {
             steps {
                 // This stage is for running your tests.
@@ -114,6 +114,65 @@ pipeline {
                     // Clean up the string by removing the markdown code block tags.
                     testCaseCode = testCaseCode.replaceAll('```cpp', '').replaceAll('```', '').trim()
                     writeFile(file: "tests/ai_created_test_case.cpp", text: testCaseCode)
+                }
+            }
+        }
+        */
+        stage('Iterative Coverage Improvement') {
+            steps {
+                script {
+                    def maxIterations = 10
+                    def iteration = 0
+                    def coverage = 0
+
+                    while (iteration < maxIterations) {
+                        // Run coverage script to update reports
+                        sh './coverage.sh'
+
+                        // Parse coverage percentage from lcov report (assumes genhtml output in reports/index.html)
+                        def coverageReportContent = readFile(file: "reports/index.html")
+                        def matcher = coverageReportContent =~ /lines\.*: ([\d\.]+)%/
+                        if (matcher) {
+                            coverage = matcher[0][1] as float
+                        } else {
+                            error("Could not parse coverage percentage from report.")
+                        }
+
+                        echo "Current coverage: ${coverage}%"
+
+                        if (coverage >= 100.0) {
+                            echo "Coverage is 100%. Stopping iteration."
+                            break
+                        }
+
+                        // Prepare prompt for Gemini
+                        def prompt = """
+                        Analyze the following HTML code coverage report from lcov. 
+                        Identify the lines of code that are not covered by tests and write a C++ test case using the Google Test framework to cover those lines.
+                        The new test case should be in the same style as test_number_to_string.cpp.
+
+                        Coverage Report Content: ${coverageReportContent}
+
+                        Write only the C++ code for the new test case, and nothing else.
+                        """
+
+                        def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
+
+                        withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
+                            echo "Analyzing coverage files, iteration ${iteration}..."
+                            sh "python3 ai_generate_promt.py '${prompt}' 'dummy_log' '${outputPath}'"
+                        }
+
+                        // Read generated test case and append to test file
+                        def testCaseCode = readFile(file: outputPath)
+                        testCaseCode = testCaseCode.replaceAll('```cpp', '').replaceAll('```', '').trim()
+                        writeFile(file: "tests/ai_created_test_case.cpp", text: testCaseCode, append: true)
+
+                        // Rebuild tests for next iteration
+                        sh 'make test'
+
+                        iteration++
+                    }
                 }
             }
         }
