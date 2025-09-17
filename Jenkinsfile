@@ -164,6 +164,9 @@ pipeline {
                             break
                         }
 
+                        // Corrected: Read the file inside the loop
+                        def coverageReportContent = readFile(file: "reports/index.html")
+
                         // Prepare prompt for Gemini
                         def prompt = """
                         Analyze the following HTML code coverage report from lcov. 
@@ -176,7 +179,7 @@ pipeline {
                         """
 
                         def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
-                        def coverageReportContent = readFile(file: "reports/index.html")
+                        
 
                         withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                             echo "Analyzing coverage files, iteration ${iteration}..."
