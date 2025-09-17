@@ -143,10 +143,23 @@ pipeline {
                         if (lhMatcher) {
                             linesHit = lhMatcher[0][1] as int
                         }
+                        
+                        sh """
+                          linesFound=${linesFound}
+                          linesHit=${linesHit}
+                          if [ \$linesFound -gt 0 ]; then
+                            coverage=\$(echo "scale=2; (\$linesHit / \$linesFound) * 100" | bc)
+                          else
+                            coverage=0
+                          fi
+                          echo "Calculated coverage: \$coverage"
+                          echo "coverage=\$coverage" > coverage.env
+                        """
+                        
+                        def coverageEnv = readProperties file: 'coverage.env'
+                        coverage = coverageEnv.coverage as Float
 
-                        if (linesFound > 0) {
-                            coverage = (linesHit.toFloat() / linesFound.toFloat()) * 100
-                        } else {
+                        if (linesFound == 0) {
                             error("Could not parse coverage percentage from report.")
                         }
 
@@ -169,6 +182,7 @@ pipeline {
                         """
 
                         def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
+                        def coverageReportContent = readFile(file: "reports/index.html")
 
                         withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                             echo "Analyzing coverage files, iteration ${iteration}..."
