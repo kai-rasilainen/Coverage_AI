@@ -30,11 +30,12 @@ TEST_DIR = tests
 MAIN_SRC = $(SRC_DIR)/main.cpp $(SRC_DIR)/number_to_string.cpp
 MAIN_TARGET = $(BUILD_DIR)/main
 
-# Test source files and executable
-TEST_SRC = $(TEST_DIR)/test_number_to_string.cpp $(SRC_DIR)/number_to_string.cpp
+# Test source files and executable (FIXED)
+# This uses a wildcard to automatically find all test files in the directory.
+TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp) $(SRC_DIR)/number_to_string.cpp
 TEST_TARGET = $(BUILD_DIR)/test_number_to_string
 
-.PHONY: all clean test
+.PHONY: all clean test coverage
 
 # Default target
 all: $(MAIN_TARGET)
@@ -51,10 +52,14 @@ $(TEST_TARGET): $(TEST_SRC) | $(BUILD_DIR)
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)
 
+# Rule to run the coverage script
+coverage:
+	./coverage.sh
+
 # Create build directory
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-# Clean up built files
+# Clean up built files and coverage data
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) reports

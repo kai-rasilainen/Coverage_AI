@@ -121,7 +121,7 @@ pipeline {
         stage('Iterative Coverage Improvement') {
             steps {
                 script {
-                    def maxIterations = 10
+                    def maxIterations = 3
                     def iteration = 0
                     def coverage = 0.0
                     
@@ -201,26 +201,4 @@ pipeline {
         }
     }
     
-    // The 'post' block defines actions to be performed after the main stages have finished.
-    // These actions are conditional based on the build's final status.
-    post {
-        success {
-            echo 'The build was successful! Running post-build commands.'
-            // Add any commands to run only after a successful build here.
-            // For example, deploying the application or running a script.
-            //sh 'echo "Build succeeded, running a cleanup script."'
-        }
-        
-        failure {
-            echo 'The build failed. Notifying the team.'
-            // Add any commands to run only after a failed build here.
-            // For example, sending an email or a Slack notification.
-        }
-        
-        always {
-            echo 'This will always run, regardless of the build status.'
-            // Commands here will execute even if the build was successful or failed.
-            //sh "python3 ai_generate_promt.py /Users/rasilainen/.jenkins/jobs/Coverage_AI_pipeline/builds/${env.BUILD_NUMBER}/log output.txt"
-        }
-    }
 }
