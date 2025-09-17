@@ -123,7 +123,7 @@ pipeline {
                 script {
                     def maxIterations = 10
                     def iteration = 0
-                    def coverage = 0
+                    def coverage = 0.0
                     
                     while (iteration < maxIterations) {
                         // Run coverage script to update reports
@@ -131,7 +131,6 @@ pipeline {
 
                         // Reread the file inside the loop for updated data on each iteration
                         def coverageInfoContent = readFile(file: "reports/coverage.info")
-                        def coverageEnv
                         
                         sh("""
                           linesFound=\$(grep -E "^LF:" reports/coverage.info | awk -F':' '{print \$2}')
@@ -151,10 +150,10 @@ pipeline {
                           echo "coverage=\$coverage" > coverage.env
                         """)
 
-                        coverageEnv = readProperties file: 'coverage.env'
+                        def coverageEnv = readProperties file: 'coverage.env'
                         coverage = coverageEnv.coverage as Float
 
-                        if (coverage == 0) {
+                        if (coverage == 0.0) {
                             error("Could not parse coverage percentage from report.")
                         }
 
