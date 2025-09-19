@@ -20,6 +20,7 @@ lcov --directory ${BUILD_DIR} --zerocounters
 # Step 3: Capture coverage data from the build directory.
 echo "Capturing coverage data from build"
 # The --ignore-errors flags handle common warnings from gcov output for system headers.
+# The --rc flags are used to set options for geninfo.
 lcov --directory ${BUILD_DIR} --capture --output-file ${REPORT_DIR}/coverage.info \
     --rc lcov_branch_coverage=1 --rc geninfo_unexecuted_blocks=1 \
     --ignore-errors mismatch,unsupported,inconsistent,gcov,source
