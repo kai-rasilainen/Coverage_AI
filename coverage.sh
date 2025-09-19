@@ -13,6 +13,8 @@ make test || { echo "Error: make test failed. Please fix compilation issues befo
 
 # Step 2: Run all tests in a single execution to accumulate a comprehensive coverage dataset.
 echo "Running all tests to generate aggregate coverage data..."
+# Reset counters to avoid stamp mismatch errors from previous runs.
+lcov --directory ${BUILD_DIR} --zerocounters
 ./${BUILD_DIR}/test_number_to_string --gtest_filter="*"
 
 # Step 3: Capture coverage data from the build directory.
