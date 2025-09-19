@@ -38,4 +38,3 @@ genhtml ${REPORT_DIR}/coverage.info --output-directory ${REPORT_DIR} \
     --ignore-errors empty,source
 
 echo "Aggregated coverage report generated in ${REPORT_DIR}/index.html"
-
