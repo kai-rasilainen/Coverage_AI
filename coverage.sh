@@ -20,7 +20,7 @@ echo "Capturing coverage data from build"
 # The --ignore-errors flags handle common warnings from gcov output for system headers.
 lcov --directory ${BUILD_DIR} --capture --output-file ${REPORT_DIR}/coverage.info \
     --rc lcov_branch_coverage=1 --rc geninfo_unexecuted_blocks=1 \
-    --ignore-errors mismatch,unsupported,inconsistent,gcov
+    --ignore-errors mismatch,unsupported,inconsistent,gcov,source
 
 # Step 4: Filter out irrelevant files from the coverage report.
 echo "Filtering irrelevant files from the coverage report..."
@@ -32,6 +32,6 @@ lcov --remove ${REPORT_DIR}/coverage.info '/usr/*' '*/tests/*' \
 echo "Generating HTML report..."
 mkdir -p ${REPORT_DIR}
 genhtml ${REPORT_DIR}/coverage.info --output-directory ${REPORT_DIR} \
-    --ignore-errors empty
+    --ignore-errors empty,source
 
 echo "Aggregated coverage report generated in ${REPORT_DIR}/index.html"
