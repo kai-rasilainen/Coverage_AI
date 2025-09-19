@@ -14,7 +14,7 @@ pipeline {
 
         string(
             name: 'prompt_coverage', 
-            defaultValue: """Provide a C++ test case source code to improve code coverage for the coverage reports in folder reports. Use the Google Test framework and the same style as test_number_to_string.cpp. You MUST use the header file: #include "number_to_string.h", NOT "my_number_converter.h".""",
+            defaultValue: """Provide a C++ test case source code to improve code coverage for the coverage reports in folder reports. Use the Google Test framework and the same style as test_number_to_string.cpp. You MUST use the header file: #include "number_to_string.h".""",
             description: 'The coverage prompt to pass to the script.')
     }
 
@@ -48,15 +48,6 @@ pipeline {
             }
         }
         /*
-        stage('Test') {
-            steps {
-                // This stage is for running your tests.
-                // Replace 'echo' with your actual test command.
-                echo 'Running tests...'
-                sh './coverage.sh'
-            }
-        }
-        
         stage('Analyze Console Log with Gemini') {
             steps {
                 script {
@@ -102,18 +93,6 @@ pipeline {
                         // Correctly run the Python script with python3 and pass the log path and output path as arguments
                         sh "python3 ai_generate_promt.py '${prompt}' '${logPath}' '${outputPath}'"
                     }
-                }
-            }
-        }
-
-        stage('Create New Test File') {
-            steps {
-                script {
-                    echo 'Creating a new test file with the generated code...'
-                    def testCaseCode = readFile(file: "build_${env.BUILD_NUMBER}_coverage_analysis.txt")
-                    // Clean up the string by removing the markdown code block tags.
-                    testCaseCode = testCaseCode.replaceAll('```cpp', '').replaceAll('```', '').trim()
-                    writeFile(file: "tests/ai_created_test_case.cpp", text: testCaseCode)
                 }
             }
         }
@@ -191,29 +170,6 @@ pipeline {
                     }
                 }
             }
-        }
-    }
-    
-    // The 'post' block defines actions to be performed after the main stages have finished.
-    // These actions are conditional based on the build's final status.
-    post {
-        success {
-            echo 'The build was successful! Running post-build commands.'
-            // Add any commands to run only after a successful build here.
-            // For example, deploying the application or running a script.
-            //sh 'echo "Build succeeded, running a cleanup script."'
-        }
-        
-        failure {
-            echo 'The build failed. Notifying the team.'
-            // Add any commands to run only after a failed build here.
-            // For example, sending an email or a Slack notification.
-        }
-        
-        always {
-            echo 'This will always run, regardless of the build status.'
-            // Commands here will execute even if the build was successful or failed.
-            //sh "python3 ai_generate_promt.py /Users/rasilainen/.jenkins/jobs/Coverage_AI_pipeline/builds/${env.BUILD_NUMBER}/log output.txt"
         }
     }
 }
