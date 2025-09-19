@@ -14,7 +14,7 @@ pipeline {
 
         string(
             name: 'prompt_coverage', 
-            defaultValue: """Provide a C++ test case source code to improve code coverage for the coverage reports in folder reports. Use the Google Test framework and the same style as test_number_to_string.cpp.""",
+            defaultValue: """Provide a C++ test case source code to improve code coverage for the coverage reports in folder reports. Use the Google Test framework and the same style as test_number_to_string.cpp. You MUST use the header file: #include "number_to_string.h".""",
             description: 'The coverage prompt to pass to the script.')
     }
 
@@ -121,7 +121,7 @@ pipeline {
         stage('Iterative Coverage Improvement') {
             steps {
                 script {
-                    def maxIterations = 3
+                    def maxIterations = 10
                     def iteration = 0
                     def coverage = 0.0
                     
@@ -164,22 +164,15 @@ pipeline {
                             break
                         }
 
-                        // Corrected: Read the file inside the loop
-                        def coverageReportContent = readFile(file: "reports/index.html")
-
                         // Prepare prompt for Gemini
-                        def prompt = """
-                        Analyze the following HTML code coverage report from lcov. 
-                        Identify the lines of code that are not covered by tests and write a C++ test case using the Google Test framework to cover those lines.
-                        The new test case should be in the same style as test_number_to_string.cpp.
+                        // Corrected: Use the prompt_coverage parameter and append the coverage report content.
+                        def prompt = """${params.prompt_coverage}
 
-                        Coverage Report Content: ${coverageReportContent}
-
-                        Write only the C++ code for the new test case, and nothing else.
+                        Coverage Report Content:
+                        ${readFile(file: "reports/index.html")}
                         """
 
                         def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
-                        
 
                         withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                             echo "Analyzing coverage files, iteration ${iteration}..."
@@ -201,4 +194,26 @@ pipeline {
         }
     }
     
+    // The 'post' block defines actions to be performed after the main stages have finished.
+    // These actions are conditional based on the build's final status.
+    post {
+        success {
+            echo 'The build was successful! Running post-build commands.'
+            // Add any commands to run only after a successful build here.
+            // For example, deploying the application or running a script.
+            //sh 'echo "Build succeeded, running a cleanup script."'
+        }
+        
+        failure {
+            echo 'The build failed. Notifying the team.'
+            // Add any commands to run only after a failed build here.
+            // For example, sending an email or a Slack notification.
+        }
+        
+        always {
+            echo 'This will always run, regardless of the build status.'
+            // Commands here will execute even if the build was successful or failed.
+            //sh "python3 ai_generate_promt.py /Users/rasilainen/.jenkins/jobs/Coverage_AI_pipeline/builds/${env.BUILD_NUMBER}/log output.txt"
+        }
+    }
 }
