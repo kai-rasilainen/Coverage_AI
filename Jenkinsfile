@@ -14,11 +14,6 @@ pipeline {
             description: 'The coverage prompt to pass to the script.')
     }
 
-    environment {
-        // This environment block is now empty, as the necessary tools
-        // are in the system's default PATH on Linux.
-    }
-
     // The 'stages' block contains the logical divisions of your build process.
     stages {
         stage('Iterative Coverage Improvement') {
