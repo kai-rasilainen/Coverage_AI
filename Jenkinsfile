@@ -6,7 +6,7 @@ pipeline {
     agent any
 
     environment {
-        // Add the directory to the PATH so that Jenkins can find
+        // Add the Homebrew directory to the PATH so that Jenkins can find
         // tools like 'lcov' and 'genhtml'.
         PATH = "/opt/homebrew/bin:${env.PATH}"
     }
@@ -15,15 +15,8 @@ pipeline {
     stages {
         stage('Build and Test') {
             steps {
-                // This step checks out the code from the repository.
-                // It is automatically handled by the SCM configuration in your project.
                 echo 'Checking out the project from the repository...'
-                
-                // Build the project
-                echo 'Starting the build process...'
                 sh 'make all'
-                
-                // Run the test binary to ensure it's executable
                 sh 'build/test_number_to_string'
             }
         }
@@ -31,6 +24,7 @@ pipeline {
         stage('Generate Coverage Report') {
             steps {
                 echo 'Generating code coverage report...'
+                // The coverage script now includes explicit flags to handle the errors
                 sh './coverage.sh'
             }
         }
@@ -39,7 +33,7 @@ pipeline {
     // The 'post' block contains steps that always run after all stages have completed.
     post {
         always {
-            echo 'Cleanup...'
+            echo 'Cleaning up the build directory...'
             sh 'make clean'
         }
     }
