@@ -73,6 +73,7 @@ pipeline {
                         }
                         
                         // Read generated test case and append to test file
+                        def testCaseCode = (rawAiResponse =~ /(?s)```cpp(.*?)```/)[0][1].trim()
                         def testCaseCode = readFile(file: outputPath).replaceAll('```cpp', '').replaceAll('```', '').trim()
                         writeFile(file: "tests/ai_generated_tests.cpp", text: testCaseCode, append: true)
                         
