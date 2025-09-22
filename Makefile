@@ -1,5 +1,5 @@
 # Compiler and flags
-CXX = g++
+CXX = g++-11
 GCOV_FLAGS = --coverage
 CXXFLAGS = -std=c++17 -Wall -Wextra -I./src
 CXXFLAGS_GTEST = -std=c++17 -Wall -Wextra -I./src -I/usr/include/gtest
