@@ -6,7 +6,7 @@ CXXFLAGS_GTEST = -std=c++17 -Wall -Wextra -I./src -I/usr/include/gtest
 
 # Executable paths
 SRC = src/main.cpp src/number_to_string.cpp
-TEST_SRC = tests/test_number_to_string.cpp tests/ai_generated_tests.cpp
+TEST_SRC = tests/test_number_to_string.cpp tests/ai_generated_tests.cpp src/number_to_string.cpp
 BUILD_DIR = build
 TARGET = $(BUILD_DIR)/main
 TEST_BINARY = $(BUILD_DIR)/test_number_to_string
