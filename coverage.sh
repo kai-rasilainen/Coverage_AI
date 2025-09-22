@@ -3,6 +3,12 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
+# Check if the AI-generated test file exists and create it if it doesn't.
+if [ ! -f "tests/ai_generated_tests.cpp" ]; then
+    echo "Creating empty ai_generated_tests.cpp"
+    touch tests/ai_generated_tests.cpp
+fi
+
 # Run the 'make test' command to build and run the test executable.
 make test
 
