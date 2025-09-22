@@ -3,6 +3,13 @@
 # Run tests to generate .gcda and .gcno files
 make tests
 
+# Check if the make command succeeded and the executable exists
+if [ ! -f "build/test_number_to_string" ]; then
+    echo "Error: The test executable 'build/test_number_to_string' was not found."
+    echo "Please check the 'make tests' command in your Makefile and Jenkins build log for errors."
+    exit 1
+fi
+
 # The output of g++ is redirected to a temporary file to avoid cluttering the Jenkins console.
 test_list=$(build/test_number_to_string --gtest_list_tests | awk '/^[^ ]/ {suite=$1} /^[ ]/ {print suite $1}')
 
