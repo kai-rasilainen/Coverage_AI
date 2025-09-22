@@ -1,49 +1,38 @@
 #!/bin/bash
 
-# This script runs all C++ tests and generates a code coverage report using lcov.
-
-# Exit immediately if any command fails.
+# Exit immediately if a command exits with a non-zero status.
 set -e
 
-# Run the 'make all' command to build the main and test executables.
-# The `make` command is expected to create the test executable in the build directory.
-make all
+# Run the 'make test' command to build and run the test executable.
+make test
 
-# Get a list of all test cases from the test executable.
-# The 'awk' command filters the output to capture both the test suite and test case names.
-test_list=$(build/test_number_to_string --gtest_list_tests | awk '/^[^ ]/ {suite=$1} /^[ ]/ {print suite $1}')
+# Check if the executable exists before trying to run it.
+if [ ! -f "build/test_number_to_string" ]; then
+    echo "Error: The test executable 'build/test_number_to_string' was not found."
+    exit 1
+fi
 
+# Set directories for coverage reports
 BUILD_DIR=build
 REPORT_DIR=reports
 
-for test_case_name in $test_list; do
-    COVERAGE_DIR=${REPORT_DIR}/coverage_report_${test_case_name}
-    COVERAGE_INFO=${COVERAGE_DIR}/coverage.info
-    rm -fr ${COVERAGE_DIR} ; mkdir -p ${COVERAGE_DIR}
-    echo "Running test: ${test_case_name} coverage to ${COVERAGE_DIR}"
+# Remove previous coverage data and create a new directory
+rm -fr ${REPORT_DIR}
+mkdir -p ${REPORT_DIR}
 
-    # Reset all counters in the code to zero before running the test.
-    lcov --directory build --zerocounters > /dev/null
+# LCOV and genhtml commands for coverage generation
+# Use 'lcov --gcov-tool' to specify the gcov command for your version of g++
+lcov --capture --directory ${BUILD_DIR} --output-file ${REPORT_DIR}/coverage.info \
+--ignore-errors mismatch,inconsistent,unsupported
 
-    # Run the specific test case using --gtest_filter.
-    # The '|| echo' part ensures the script doesn't exit on a test failure.
-    build/test_number_to_string --gtest_filter="${test_case_name}" || echo "Test ${test_case_name} failed"
+# Remove system headers and test files from the report
+lcov --remove ${REPORT_DIR}/coverage.info '/usr/*' '*/tests/*' --output-file ${REPORT_DIR}/coverage.info
 
-    # Capture the coverage data and save it to a .info file.
-    # The ignore flags are added to handle compatibility issues with some GCC versions.
-    lcov --capture --directory ${BUILD_DIR} --output-file ${COVERAGE_INFO} \
-    --ignore-errors mismatch,unused,empty --ignore-errors inconsistent,unsupported > /dev/null
+# Generate the HTML report
+genhtml ${REPORT_DIR}/coverage.info --output-directory ${REPORT_DIR} --ignore-errors mismatch
 
-    # Remove irrelevant coverage data from standard libraries and test files.
-    lcov --remove ${COVERAGE_INFO} '/usr/*' '*/tests/*' --output-file ${COVERAGE_INFO} > /dev/null
-    
-    # Generate the HTML report from the coverage data.
-    # The ignore flag is for handling potential missing files from lcov step.
-    genhtml ${COVERAGE_INFO} --output-directory ${COVERAGE_DIR} > /dev/null
-    echo "Coverage report generated in ${COVERAGE_DIR}/index.html"
-done
+echo "Coverage report generated in ${REPORT_DIR}/index.html"
 
-# Post-build cleanup to remove temporary coverage files.
-echo "Cleaning up temporary coverage files..."
-rm -f ${BUILD_DIR}/*.gcno ${BUILD_DIR}/*.gcda
-echo "Cleanup complete."
+# Clean up
+find . -name "*.gcno" -exec rm {} \;
+find . -name "*.gcda" -exec rm {} \;
