@@ -39,6 +39,11 @@ for test_case_name in $test_list; do
     
     # Generate the HTML report from the coverage data.
     # The ignore flag is for handling potential missing files from lcov step.
-    genhtml ${COVERAGE_INFO} --output-directory ${COVERAGE_DIR} --ignore-errors missing > /dev/null
+    genhtml ${COVERAGE_INFO} --output-directory ${COVERAGE_DIR} > /dev/null
     echo "Coverage report generated in ${COVERAGE_DIR}/index.html"
 done
+
+# Post-build cleanup to remove temporary coverage files.
+echo "Cleaning up temporary coverage files..."
+rm -f ${BUILD_DIR}/*.gcno ${BUILD_DIR}/*.gcda
+echo "Cleanup complete."
