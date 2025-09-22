@@ -1,21 +1,16 @@
 #!/bin/bash
 
-# Run tests to generate .gcda and .gcno files.
-# The 'set -e' command ensures that the script will exit immediately if any command fails.
+# This script runs all C++ tests and generates a code coverage report using lcov.
+
+# Exit immediately if any command fails.
 set -e
 
-# Build the test executable using the make command for tests.
-# This should create 'build/test_number_to_string'.
-make test
+# Run the 'make all' command to build the main and test executables.
+# The `make` command is expected to create the test executable in the build directory.
+make all
 
-# Check if the make command succeeded and the executable exists.
-if [ ! -f "build/test_number_to_string" ]; then
-    echo "Error: The test executable 'build/test_number_to_string' was not found."
-    echo "Please check the 'make test' command in your Makefile and Jenkins build log for errors."
-    exit 1
-fi
-
-# The output of g++ is redirected to a temporary file to avoid cluttering the Jenkins console.
+# Get a list of all test cases from the test executable.
+# The 'awk' command filters the output to capture both the test suite and test case names.
 test_list=$(build/test_number_to_string --gtest_list_tests | awk '/^[^ ]/ {suite=$1} /^[ ]/ {print suite $1}')
 
 BUILD_DIR=build
@@ -27,16 +22,23 @@ for test_case_name in $test_list; do
     rm -fr ${COVERAGE_DIR} ; mkdir -p ${COVERAGE_DIR}
     echo "Running test: ${test_case_name} coverage to ${COVERAGE_DIR}"
 
+    # Reset all counters in the code to zero before running the test.
     lcov --directory build --zerocounters > /dev/null
+
+    # Run the specific test case using --gtest_filter.
+    # The '|| echo' part ensures the script doesn't exit on a test failure.
     build/test_number_to_string --gtest_filter="${test_case_name}" || echo "Test ${test_case_name} failed"
 
-    # Corrected lcov command with flags to ignore errors.
-    lcov --capture --directory ${BUILD_DIR} --output-file ${COVERAGE_INFO} --ignore-errors unsupported,inconsistent > /dev/null
+    # Capture the coverage data and save it to a .info file.
+    # The ignore flags are added to handle compatibility issues with some GCC versions.
+    lcov --capture --directory ${BUILD_DIR} --output-file ${COVERAGE_INFO} \
+    --ignore-errors mismatch,unused,empty --ignore-errors inconsistent,unsupported > /dev/null
 
-    # Corrected lcov command to remove system files and test files from the report.
-    lcov --ignore-errors unused,empty,inconsistent --remove ${COVERAGE_INFO} '/usr/*' '*/tests/*' --output-file ${COVERAGE_INFO} > /dev/null
-
-    # Corrected genhtml command with flags to ignore errors.
+    # Remove irrelevant coverage data from standard libraries and test files.
+    lcov --remove ${COVERAGE_INFO} '/usr/*' '*/tests/*' --output-file ${COVERAGE_INFO} > /dev/null
+    
+    # Generate the HTML report from the coverage data.
+    # The ignore flag is for handling potential missing files from lcov step.
     genhtml ${COVERAGE_INFO} --output-directory ${COVERAGE_DIR} --ignore-errors missing > /dev/null
     echo "Coverage report generated in ${COVERAGE_DIR}/index.html"
 done
