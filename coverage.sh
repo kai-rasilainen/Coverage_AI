@@ -1,6 +1,9 @@
 #!/bin/bash
 
 # Run tests to generate .gcda and .gcno files
+# The 'set -e' command ensures that the script will exit immediately if any command fails.
+set -e
+
 make tests
 
 # Check if the make command succeeded and the executable exists
