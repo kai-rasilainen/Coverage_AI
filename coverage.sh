@@ -35,15 +35,15 @@ else
 fi
 
 echo "--- 3. Capturing coverage data using LCOV with the correct GCOV tool ---"
-# Only point LCOV to the build directory where the .gcda files for ALL code were generated.
-# Use ignore-errors to bypass Google Test macro warnings/errors.
+# The --base-directory option is key to ensuring LCOV finds the source files.
+# Use --ignore-errors to handle Google Test macros and other non-fatal warnings.
 lcov --gcov-tool "$GCOV_TOOL" \
      --capture \
      --directory "$BUILD_DIR" \
      --output-file "$COVERAGE_INFO.tmp" \
-     --ignore-errors mismatch,empty # <-- ADDED mismatch, removed SOURCE_DIR
+     --base-directory "." \
+     --ignore-errors mismatch,empty
 
-# --- 4. Filtering out test code, gtest files, and system headers ---
 echo "--- 4. Filtering out test code, gtest files, and system headers ---"
 # Filter out non-source files (test files, /usr/include, etc.)
 lcov --gcov-tool "$GCOV_TOOL" \
@@ -52,7 +52,7 @@ lcov --gcov-tool "$GCOV_TOOL" \
      '*/tests/*' \
      '*/ai_generated_tests.cpp' \
      --output-file "$COVERAGE_INFO" \
-     --ignore-errors unused
+     --ignore-errors unused,empty
 
 # Clean up temporary file
 rm "$COVERAGE_INFO.tmp"
@@ -64,7 +64,8 @@ genhtml "$COVERAGE_INFO" \
         --output-directory "$REPORT_DIR" \
         --demangle-cpp \
         --legend \
-        --title "Code Coverage Report"
+        --title "Code Coverage Report" \
+        --ignore-errors source
 
 echo "--- Done ---"
 echo "Coverage report is ready. Open $REPORT_DIR/index.html in your browser."
