@@ -10,7 +10,10 @@ parameters {
 
     string(
         name: 'prompt_coverage',
-        defaultValue: """Provide a C++ test case source code to improve code coverage for the coverage reports in folder reports. Use the Google Test framework and the same style as test_number_to_string.cpp. You MUST use the header file: #include "number_to_string.h", NOT "ai_created_test_case.h". Write nothing else than code. """,
+        defaultValue: """Provide a C++ test case source code to improve code coverage for the coverage 
+            reports in folder reports. Use the Google Test framework and the same style as 
+            test_number_to_string.cpp. The function to test is `numberToString`. You MUST use the header 
+        f   ile: #include "number_to_string.h", NOT "ai_created_test_case.h". Write nothing else than code. """,
         description: 'The coverage prompt to pass to the script.')
 }
 
