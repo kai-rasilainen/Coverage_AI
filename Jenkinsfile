@@ -26,7 +26,7 @@ stages {
                 sh 'make test'
 
                 // The rest of the pipeline is now in a loop for iterative improvement
-                def maxIterations = 3
+                def maxIterations = 10
                 def iteration = 0
                 def coverage = 0.0
 
