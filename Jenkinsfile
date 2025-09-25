@@ -48,7 +48,7 @@ stages {
                     def linesHit = 0
 
                     // Parse LCOV file for Lines Found and Lines Hit
-                    // This uses a serializable approach to avoid the NotSerializableException.
+                    // This is a serializable approach to avoid the NotSerializableException.
                     coverageInfoContent.eachLine { line ->
                         if (line.startsWith("LF:")) {
                             linesFound = line.substring(3).toInteger()
@@ -67,11 +67,22 @@ stages {
                         echo "Coverage is 100%. Stopping iteration."
                         break
                     }
+                    
+                    // --- DEFENSIVE CHECK ---
+                    // Check if the HTML report file was created before attempting to read it.
+                    def coverageReportFile = "coverage_report/index.html"
+                    def coverageReportContent = ""
+                    if (fileExists(coverageReportFile)) {
+                        // If the file exists, read its content.
+                        coverageReportContent = readFile(file: coverageReportFile)
+                    } else {
+                        // If the file doesn't exist, log a warning and use a default message.
+                        echo "WARNING: HTML coverage report '${coverageReportFile}' was not found. The generated test case will be based on the .info file."
+                        coverageReportContent = "HTML report not found. See LCOV report for coverage data."
+                    }
 
                     // Prepare prompt for Gemini
                     // Use the prompt_coverage parameter and append the coverage report content.
-                    // The index.html is in the 'coverage_report' directory.
-                    def coverageReportContent = readFile(file: "coverage_report/index.html")
                     def prompt = "${params.prompt_coverage}\n\nCoverage Report Content:\n${coverageReportContent}"
 
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
