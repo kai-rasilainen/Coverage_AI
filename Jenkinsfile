@@ -48,13 +48,12 @@ stages {
                     def linesHit = 0
 
                     // Parse LCOV file for Lines Found and Lines Hit
-                    // This uses a different approach to avoid the NotSerializableException.
-                    def lineMatcher = (coverageInfoContent =~ /^(LF|LH):([0-9]+)$/)
-                    lineMatcher.each { match ->
-                        if (match[1] == 'LF') {
-                            linesFound = match[2].toInteger()
-                        } else if (match[1] == 'LH') {
-                            linesHit = match[2].toInteger()
+                    // This uses a serializable approach to avoid the NotSerializableException.
+                    coverageInfoContent.eachLine { line ->
+                        if (line.startsWith("LF:")) {
+                            linesFound = line.substring(3).toInteger()
+                        } else if (line.startsWith("LH:")) {
+                            linesHit = line.substring(3).toInteger()
                         }
                     }
 
