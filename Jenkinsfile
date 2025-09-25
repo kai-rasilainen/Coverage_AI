@@ -10,7 +10,7 @@ parameters {
 
     string(
         name: 'prompt_coverage',
-        defaultValue: """Provide a C++ test case source code to improve code coverage for the coverage reports in folder reports. Use the Google Test framework and the same style as test_number_to_string.cpp. The function to test is `numberToString`. It returns a string with a specific prefix: for positive numbers it returns "POSITIVE: ", for negative numbers it returns "NEGATIVE: ", and for zero it returns "NULL". The tests must be written using `EXPECT_EQ(expected, actual)` where the expected value is a string literal. You MUST use the header file: #include "number_to_string.h", NOT "ai_created_test_case.h". Write nothing else than code. """,
+        defaultValue: """Provide a C++ test case source code to improve code coverage for the coverage reports in folder reports. Use the Google Test framework and the same style as test_number_to_string.cpp. The function to test is `numberToString`. It returns a formatted string. For a positive number, it returns "POSITIVE: " followed by the number (e.g., for 123 it returns "POSITIVE: 123"). For a negative number, it returns "NEGATIVE: " followed by the number (e.g., for -456 it returns "NEGATIVE: -456"). For zero, it returns "NULL". The tests must be written using `EXPECT_EQ(expected, actual)` where the expected value is a string literal. You MUST use the header file: #include "number_to_string.h", NOT "ai_created_test_case.h". Write nothing else than code. """,
         description: 'The coverage prompt to pass to the script.')
 }
 
@@ -26,7 +26,7 @@ stages {
                 sh 'make test'
 
                 // The rest of the pipeline is now in a loop for iterative improvement
-                def maxIterations = 10
+                def maxIterations = 5
                 def iteration = 0
                 def coverage = 0.0
 
