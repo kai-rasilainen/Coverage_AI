@@ -1,0 +1,1 @@
+genhtml reports/coverage_report_NumberToStringInt_Negative.Int/coverage.info --output-directory reports/coverage_report_NumberToStringInt_Negative.Int --ignore-errors source,unsupported,empty

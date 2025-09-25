@@ -1,0 +1,1 @@
+genhtml reports/coverage_report_ReturnNumberVariant2.Positive/coverage.info --output-directory reports/coverage_report_ReturnNumberVariant2.Positive --ignore-errors source,unsupported,empty

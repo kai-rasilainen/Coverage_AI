@@ -1,0 +1,1 @@
+genhtml reports/coverage_report_ReturnNumberVariant5.Zero/coverage.info --output-directory reports/coverage_report_ReturnNumberVariant5.Zero --ignore-errors source,unsupported,empty
