@@ -1,44 +1,70 @@
 #!/bin/bash
 
-# Exit immediately if a command exits with a non-zero status.
-set -e
+# --- Configuration ---
+# Set the GCOV_TOOL to match the compiler version (g++-11 in your case)
+GCOV_TOOL="/usr/bin/gcov-11"
+BUILD_DIR="build"
+TEST_EXEC="${BUILD_DIR}/test_number_to_string"
+REPORT_DIR="coverage_report"
+COVERAGE_INFO="${BUILD_DIR}/coverage.info"
+# Source directories to include in the report (adjust as needed)
+SOURCE_DIR="src" 
 
-# Check if the AI-generated test file exists and create it if it doesn't.
-if [ ! -f "tests/ai_generated_tests.cpp" ]; then
-    echo "Creating empty ai_generated_tests.cpp"
-    touch tests/ai_generated_tests.cpp
-fi
-
-# Run the 'make test' command to build and run the test executable.
-make test
-
-# Check if the executable exists before trying to run it.
-if [ ! -f "build/test_number_to_string" ]; then
-    echo "Error: The test executable 'build/test_number_to_string' was not found."
+# Check if the correct gcov tool exists
+if [ ! -f "$GCOV_TOOL" ]; then
+    echo "ERROR: Required gcov tool '$GCOV_TOOL' not found."
+    echo "Ensure that the 'gcov-11' package is installed (e.g., sudo apt install gcov-11)."
     exit 1
 fi
 
-# Set directories for coverage reports
-BUILD_DIR=build
-REPORT_DIR=reports
+echo "--- 1. Cleaning up previous coverage data (.gcda files) ---"
+# Remove previous run-time coverage data (.gcda files)
+find . -name '*.gcda' -exec rm {} \;
 
-# Remove previous coverage data and create a new directory
-rm -fr ${REPORT_DIR}
-mkdir -p ${REPORT_DIR}
+echo "--- 2. Running Unit Tests ---"
+# Execute the test executable to generate .gcda files
+if [ -x "$TEST_EXEC" ]; then
+    "$TEST_EXEC"
+    TEST_RESULT=$?
+    if [ $TEST_RESULT -ne 0 ]; then
+        echo "WARNING: Tests failed with exit code $TEST_RESULT. Proceeding with coverage capture."
+    fi
+else
+    echo "ERROR: Test executable '$TEST_EXEC' not found or not executable. Did the compilation step fail?"
+    exit 1
+fi
 
-# LCOV and genhtml commands for coverage generation
-# Use 'lcov --gcov-tool' to specify the gcov command for your version of g++
-lcov --capture --directory ${BUILD_DIR} --output-file ${REPORT_DIR}/coverage.info \
---ignore-errors mismatch,inconsistent,unsupported
+echo "--- 3. Capturing coverage data using LCOV with the correct GCOV tool ---"
+# Only point LCOV to the build directory where the .gcda files for ALL code were generated.
+# Use ignore-errors to bypass Google Test macro warnings/errors.
+lcov --gcov-tool "$GCOV_TOOL" \
+     --capture \
+     --directory "$BUILD_DIR" \
+     --output-file "$COVERAGE_INFO.tmp" \
+     --ignore-errors mismatch,empty # <-- ADDED mismatch, removed SOURCE_DIR
 
-# Remove system headers and test files from the report
-lcov --remove ${REPORT_DIR}/coverage.info '/usr/*' '*/tests/*' --output-file ${REPORT_DIR}/coverage.info
+# --- 4. Filtering out test code, gtest files, and system headers ---
+echo "--- 4. Filtering out test code, gtest files, and system headers ---"
+# Filter out non-source files (test files, /usr/include, etc.)
+lcov --gcov-tool "$GCOV_TOOL" \
+     --remove "$COVERAGE_INFO.tmp" \
+     '*/usr/include/*' \
+     '*/tests/*' \
+     '*/ai_generated_tests.cpp' \
+     --output-file "$COVERAGE_INFO" \
+     --ignore-errors unused
 
-# Generate the HTML report
-genhtml ${REPORT_DIR}/coverage.info --output-directory ${REPORT_DIR} --ignore-errors mismatch
+# Clean up temporary file
+rm "$COVERAGE_INFO.tmp"
 
-echo "Coverage report generated in ${REPORT_DIR}/index.html"
+echo "--- 5. Generating HTML Report in $REPORT_DIR ---"
+# Generate the final HTML report
+rm -rf "$REPORT_DIR"
+genhtml "$COVERAGE_INFO" \
+        --output-directory "$REPORT_DIR" \
+        --demangle-cpp \
+        --legend \
+        --title "Code Coverage Report"
 
-# Clean up
-find . -name "*.gcno" -exec rm {} \;
-find . -name "*.gcda" -exec rm {} \;
+echo "--- Done ---"
+echo "Coverage report is ready. Open $REPORT_DIR/index.html in your browser."
