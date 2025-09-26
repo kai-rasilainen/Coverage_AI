@@ -32,7 +32,8 @@ stages {
                 // This step is crucial to ensure the test executable exists
                 // before the coverage script tries to run it.
                 echo "Building and running tests for the first time..."
-                sh 'make test'
+                sh 'make clean'
+                sh 'make build/test_number_to_string'
 
                 // The rest of the pipeline is now in a loop for iterative improvement
                 def maxIterations = 5
@@ -105,8 +106,9 @@ stages {
                     def testCaseCode = readFile(file: outputPath).replaceAll('```cpp', '').replaceAll('```', '').trim()
                     writeFile(file: "tests/ai_generated_tests.cpp", text: testCaseCode, append: true)
 
-                    // Rebuild tests for next iteration
-                    sh 'make test'
+                    // Rebuild tests for next iteration (DO NOT RUN HERE)
+                    echo "Rebuilding test executable..."
+                    sh 'make build/test_number_to_string'
 
                     iteration++
                 }
