@@ -97,8 +97,9 @@ stages {
                         coverageReportContent = "HTML report not found. See LCOV report for coverage data."
                     }
 
-                // --- PREPARE FINAL PROMPT (NOW INCLUDING REQUIREMENTS) ---
-                def prompt = """${params.prompt_coverage}
+                    // --- PREPARE FINAL PROMPT (NOW INCLUDING REQUIREMENTS) ---
+                    // Ensure the prompt uses one set of triple quotes for the multi-line string.
+                    def prompt = """${params.prompt_coverage}
 
 Function Requirements Specification:
 
@@ -107,22 +108,23 @@ ${reqSpecContent}
 Coverage Report Content:
 ${coverageReportContent}"""
 
-                def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
+                    def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
 
-                withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
-                    echo "Analyzing coverage files, iteration ${iteration}..."
-                    sh "python3 ai_generate_promt.py '${prompt}' 'build/coverage.info' '${outputPath}'"
+                    withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
+                        echo "Analyzing coverage files, iteration ${iteration}..."
+                        sh "python3 ai_generate_promt.py '${prompt}' 'build/coverage.info' '${outputPath}'"
+                    }
+
+                    // Read generated test case and append to test file
+                    def testCaseCode = readFile(file: outputPath).replaceAll('```cpp', '').replaceAll('```', '').trim()
+                    writeFile(file: "tests/ai_generated_tests.cpp", text: testCaseCode, append: true)
+
+                    // Rebuild tests for next iteration (DO NOT RUN HERE)
+                    echo "Rebuilding test executable..."
+                    sh 'make build/test_number_to_string'
+
+                    iteration++
                 }
-
-                // Read generated test case and append to test file
-                def testCaseCode = readFile(file: outputPath).replaceAll('```cpp', '').replaceAll('```', '').trim()
-                writeFile(file: "tests/ai_generated_tests.cpp", text: testCaseCode, append: true)
-
-                // Rebuild tests for next iteration (DO NOT RUN HERE)
-                echo "Rebuilding test executable..."
-                sh 'make build/test_number_to_string'
-
-                iteration++
             }
         }
     }
