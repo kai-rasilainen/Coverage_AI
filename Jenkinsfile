@@ -1,6 +1,9 @@
 pipeline {
 agent any
 
+// Define the path for the requirements file
+def REQUIREMENTS_FILE = 'requirements.md'
+
 // Define the parameter to be passed to the script
 parameters {
     string(
@@ -8,17 +11,16 @@ parameters {
         defaultValue: """Read Jenkins console output file and provide a detailed analysis of its content. Write your analysis in a clear and structured manner.""",
         description: 'The console prompt to pass to the script.')
 
-string(
-    name: 'prompt_coverage',
-    defaultValue: """Provide a C++ test case source code to improve code coverage for the coverage reports in folder reports.
+    string(
+        name: 'prompt_coverage',
+        // NOTE: The default value is now a generalized instruction for the AI 
+        // to follow the specification included below in the prompt.
+        defaultValue: """Analyze the provided Function Requirements Specification (below) and the Coverage Report to generate a C++ test case.
 
 Use the Google Test framework and the same style as test_number_to_string.cpp.
-The function to test is numberToString. It returns a formatted string.
-For a positive number, it returns "POSITIVE: " followed by the number (e.g., for numberToString(123) it returns "POSITIVE: 123").
-For a negative number, it returns "NEGATIVE: " followed by the number (e.g., for numberToString(-456) it returns "NEGATIVE: -456").
-For zero, it returns "NULL".
-The tests must be written using EXPECT_EQ(expected, actual) where the expected value is a single string literal containing both the prefix and the number.
-You MUST use the header file: #include "number_to_string.h", NOT "ai_created_test_case.h".
+The function to test is numberToString.
+The tests must use the format EXPECT_EQ(expected, actual).
+You must use the header file: #include "number_to_string.h".
 Write nothing else than code.""",
 description: 'The coverage prompt to pass to the script.')
 }
@@ -29,14 +31,22 @@ stages {
         steps {
             script {
                 // --- INITIAL BUILD STEP ---
-                // This step is crucial to ensure the test executable exists
-                // before the coverage script tries to run it.
-                echo "Building and running tests for the first time..."
+                echo "Building test executable for the first time..."
                 sh 'make clean'
                 sh 'make build/test_number_to_string'
 
+                // --- LOAD REQUIREMENTS SPECIFICATION ---
+                // This dynamically loads the specification from the external file.
+                def reqSpecContent = ""
+                if (fileExists(REQUIREMENTS_FILE)) {
+                    reqSpecContent = readFile(file: REQUIREMENTS_FILE)
+                    echo "Loaded requirements from ${REQUIREMENTS_FILE}."
+                } else {
+                    error "Fatal Error: Requirements file ${REQUIREMENTS_FILE} not found. Cannot proceed."
+                }
+
                 // The rest of the pipeline is now in a loop for iterative improvement
-                def maxIterations = 5
+                def maxIterations = 3
                 def iteration = 0
                 def coverage = 0.0
 
@@ -48,17 +58,16 @@ stages {
                         writeFile file: testFile, text: ''
                     }
 
-                    // Run coverage script to update reports
+                    // Run coverage script (CLEAN -> RUN -> CAPTURE)
                     sh './coverage.sh'
 
                     // Read the coverage report to get the percentage
-                    // The coverage.sh script places this in the 'build' directory.
                     def coverageInfoContent = readFile(file: "build/coverage.info")
                     def linesFound = 0
                     def linesHit = 0
 
                     // Parse LCOV file for Lines Found and Lines Hit
-                    // This is a serializable approach to avoid the NotSerializableException.
+                    // Uses the serializable Groovy pattern.
                     coverageInfoContent.eachLine { line ->
                         if (line.startsWith("LF:")) {
                             linesFound = line.substring(3).toInteger()
@@ -77,41 +86,43 @@ stages {
                         echo "Coverage is 100%. Stopping iteration."
                         break
                     }
-                    
-                    // --- DEFENSIVE CHECK ---
-                    // Check if the HTML report file was created before attempting to read it.
+
+                    // --- DEFENSIVE CHECK for HTML ---
                     def coverageReportFile = "coverage_report/index.html"
                     def coverageReportContent = ""
                     if (fileExists(coverageReportFile)) {
-                        // If the file exists, read its content.
                         coverageReportContent = readFile(file: coverageReportFile)
                     } else {
-                        // If the file doesn't exist, log a warning and use a default message.
-                        echo "WARNING: HTML coverage report '${coverageReportFile}' was not found. The generated test case will be based on the .info file."
+                        echo "WARNING: HTML coverage report '${coverageReportFile}' was not found. Using LCOV data only."
                         coverageReportContent = "HTML report not found. See LCOV report for coverage data."
                     }
 
-                    // Prepare prompt for Gemini
-                    // Use the prompt_coverage parameter and append the coverage report content.
-                    def prompt = "${params.prompt_coverage}\n\nCoverage Report Content:\n${coverageReportContent}"
+                // --- PREPARE FINAL PROMPT (NOW INCLUDING REQUIREMENTS) ---
+                def prompt = """${params.prompt_coverage}
 
-                    def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
+Function Requirements Specification:
 
-                    withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
-                        echo "Analyzing coverage files, iteration ${iteration}..."
-                        sh "python3 ai_generate_promt.py '${prompt}' 'build/coverage.info' '${outputPath}'"
-                    }
+${reqSpecContent}
 
-                    // Read generated test case and append to test file
-                    def testCaseCode = readFile(file: outputPath).replaceAll('```cpp', '').replaceAll('```', '').trim()
-                    writeFile(file: "tests/ai_generated_tests.cpp", text: testCaseCode, append: true)
+Coverage Report Content:
+${coverageReportContent}"""
 
-                    // Rebuild tests for next iteration (DO NOT RUN HERE)
-                    echo "Rebuilding test executable..."
-                    sh 'make build/test_number_to_string'
+                def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
 
-                    iteration++
+                withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
+                    echo "Analyzing coverage files, iteration ${iteration}..."
+                    sh "python3 ai_generate_promt.py '${prompt}' 'build/coverage.info' '${outputPath}'"
                 }
+
+                // Read generated test case and append to test file
+                def testCaseCode = readFile(file: outputPath).replaceAll('```cpp', '').replaceAll('```', '').trim()
+                writeFile(file: "tests/ai_generated_tests.cpp", text: testCaseCode, append: true)
+
+                // Rebuild tests for next iteration (DO NOT RUN HERE)
+                echo "Rebuilding test executable..."
+                sh 'make build/test_number_to_string'
+
+                iteration++
             }
         }
     }
