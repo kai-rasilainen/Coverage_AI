@@ -62,7 +62,7 @@ stages {
                     }
 
                     // Run coverage script (CLEAN -> RUN -> CAPTURE)
-                    sh './coverage.sh'
+                    sh 'set +x; ./coverage.sh'
 
                     // Read the coverage report to get the percentage
                     def coverageInfoContent = readFile(file: "build/coverage.info")
