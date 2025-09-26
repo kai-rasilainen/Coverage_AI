@@ -1,8 +1,6 @@
 pipeline {
 agent any
 
-// Define the path for the requirements file
-def REQUIREMENTS_FILE = 'requirements.md'
 
 // Define the parameter to be passed to the script
 parameters {
@@ -30,6 +28,11 @@ stages {
     stage('Iterative Coverage Improvement') {
         steps {
             script {
+                // --- VARIABLE DEFINITION MOVED HERE ---
+                // Groovy requires 'def' outside of a stage to be in an environment block,
+                // but inside the 'script' block is simpler for local variables.
+                def REQUIREMENTS_FILE = 'requirements.md'
+
                 // --- INITIAL BUILD STEP ---
                 echo "Building test executable for the first time..."
                 sh 'make clean'
