@@ -11,7 +11,7 @@ parameters {
 
     string(
         name: 'prompt_requirements',
-        defaultValue: """Write a requirements.md file based on src folder content. Resulting file is used to improve test cases. Write your analysis in a clear and structured manner.""",
+        defaultValue: """Write a requirements.md file based on /src/* folder content. Resulting file is used to improve test cases. Write your analysis in a clear and structured manner.""",
         description: 'The console prompt to pass to the script.')
 
     string(
@@ -39,7 +39,7 @@ stages {
 
                 withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Creating requirements file..."
-                        sh "python3 ai_generate_promt.py '${prompt}' 'src' './requirements.md'"
+                        sh "python3 ai_generate_promt.py '${prompt}' 'src/*' './requirements.md'"
                 }
             }
         }
