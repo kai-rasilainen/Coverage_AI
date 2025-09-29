@@ -1,6 +1,33 @@
 pipeline {
 agent any
 
+def folderPath = 'src'
+def folder = new File(folderPath)
+if(!folder.exists() || !folder.isDirectory()) {
+    error "The specified folder '${folderPath}' does not exist or is not a directory."
+}   
+// 1. Get a list of all .cpp and .h files in the specified folder
+def contextFiles = folder.listFiles().findAll { file ->
+    file.name.endsWith('.cpp') || file.name.endsWith('.h')
+}.collect { file ->
+    "${folderPath}/${file.name}"
+}
+
+def codeContext = ""
+
+// 2. Loop through the list, read each file, and concatenate the content
+contextFiles.each { filePath ->
+    try {
+        def fileContent = readFile(file: filePath)
+        
+        // Append content with a clear markdown header
+        codeContext += "## File: ${filePath}\n"
+        codeContext += "```cpp\n${fileContent}\n```\n\n"
+    } catch (FileNotFoundException e) {
+        // Use an echo to warn if a file is missing, but continue processing others
+        echo "Warning: Context file not found: ${filePath}"
+    }
+}
 
 // Define the parameter to be passed to the script
 parameters {
@@ -11,7 +38,9 @@ parameters {
 
     string(
         name: 'prompt_requirements',
-        defaultValue: """Write a requirements.md file based on /src/* folder content. Resulting file is used to improve test cases. Write your analysis in a clear and structured manner.""",
+        defaultValue: """Write a requirements.md file based on files provided below. Resulting file is used to improve test cases. Write your analysis in a clear and structured manner.
+        ---
+        Here are the files: ${codeContext}""",
         description: 'The console prompt to pass to the script.')
 
     string(
