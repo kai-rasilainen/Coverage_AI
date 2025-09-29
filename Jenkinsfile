@@ -10,6 +10,11 @@ parameters {
         description: 'The console prompt to pass to the script.')
 
     string(
+        name: 'prompt_requirements',
+        defaultValue: """Write a requirements.md file based on src folder content. Resulting file is used to improve test cases. Write your analysis in a clear and structured manner.""",
+        description: 'The console prompt to pass to the script.')
+
+    string(
         name: 'prompt_coverage',
         // NOTE: The default value is now a generalized instruction for the AI 
         // to follow the specification included below in the prompt.
@@ -25,6 +30,21 @@ description: 'The coverage prompt to pass to the script.')
 
 // The 'stages' block contains the logical divisions of your build process.
 stages {
+    stage('Create Requirements Specification') {
+        steps {
+            script {
+                // --- PREPARE PROMPT ---
+                // Ensure the prompt uses one set of triple quotes for the multi-line string.
+                def prompt = """${params.prompt_requirements}"""
+
+                withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
+                        echo "Creating requirements file..."
+                        sh "python3 ai_generate_promt.py '${prompt}' 'src' '.'"
+                }
+            }
+        }
+    }
+
     stage('Iterative Coverage Improvement') {
         steps {
             script {
