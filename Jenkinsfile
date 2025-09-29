@@ -39,7 +39,7 @@ stages {
 
                 withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Creating requirements file..."
-                        sh "python3 ai_generate_promt.py '${prompt}' 'src' '.'"
+                        sh "python3 ai_generate_promt.py '${prompt}' 'src' './requirements.md'"
                 }
             }
         }
