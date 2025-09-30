@@ -40,8 +40,13 @@ stages {
                 // Use the built-in Jenkins findFiles step, which is Groovy Sandbox approved.
                 // The 'glob' pattern searches for *.cpp or *.h files recursively within the 'src' directory.
                 def CONTEXT_FILES_LIST = findFiles(glob: 'src/**')
-                def CONTEXT_FILES = CONTEXT_FILES_LIST.findAll
-                    { it.path.endsWith('.cpp') || it.path.endsWith('.h') }.collect { it.path }
+                def CONTEXT_FILES = CONTEXT_FILES_LIST.findAll { 
+                    // Check if the file name is NOT 'main.cpp'
+                    !it.name.equals('main.cpp') &&
+                    
+                    // AND check if the file path ends with .cpp OR .h
+                    (it.path.endsWith('.cpp') || it.path.endsWith('.h')) 
+                }.collect { it.path }
 
                 // Check for empty results and fail gracefully if no files are found.
                 if (CONTEXT_FILES.isEmpty()) {
@@ -78,7 +83,7 @@ stages {
                 withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                     echo "Writing requirements file..."
                     // Corrected interpolation in echo statement.
-                    echo "This is promptForRequirements: \n${promptForRequirements}"
+                    // echo "This is promptForRequirements: \n${promptForRequirements}"
                     
                     // Corrected interpolation in sh call using double quotes and proper variable referencing.
                     sh "python3 ai_generate_promt.py '${promptForRequirements}' '.' './requirements.md'"
