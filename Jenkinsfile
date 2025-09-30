@@ -36,7 +36,7 @@ stages {
                 
                 // --- DYNAMIC FILE DISCOVERY ---
                 // Dynamically find all relevant source files in the 'src' directory.
-                def CONTEXT_FILES = findFiles(glob2: 'src/**/*.{cpp,h}').collect { it.path }
+                def CONTEXT_FILES = findFiles(glob2: './src/**/*.{cpp,h}').collect { it.path }
                 echo "Context files found: ${CONTEXT_FILES}"
                 // --- WRITE REQUIREMENTS FILE ---
                 
