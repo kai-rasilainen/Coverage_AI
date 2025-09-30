@@ -35,8 +35,7 @@ stages {
                 def REQUIREMENTS_FILE = 'requirements.md'
                 // --- DYNAMIC FILE DISCOVERY ---
                 // Dynamically find all relevant source files in the 'src' directory.
-                def srcFiles = findFiles(glob: 'src/**/*.{cpp,h}').collect { it.path }
-                def CONTEXT_FILES = srcFiles
+                def CONTEXT_FILES = findFiles(glob: 'src/**/*.{cpp,h}').collect { it.path }
                 // --- WRITE REQUIREMENTS FILE ---
                 // Create an empty requirements file if it doesn't exist.
                 if (!fileExists(REQUIREMENTS_FILE)) {
@@ -56,7 +55,7 @@ stages {
                 }
                 withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                     echo "Writing requirements file..."
-                    sh "python3 ai_generate_promt.py '${params.prompt_requirements} + ${combinedContext}' './src' './requirements.md'"
+                    sh "python3 ai_generate_promt.py '${params.prompt_requirements + combinedContext}' './src' './requirements.md'"
                 }  
                 
                 // --- INITIAL BUILD STEP ---
