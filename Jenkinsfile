@@ -36,7 +36,19 @@ stages {
                 
                 // --- DYNAMIC FILE DISCOVERY (FIXED GLOB PATTERN) ---
                 // Dynamically find all relevant source files in the 'src' directory, recursively.
-                def CONTEXT_FILES = findFiles(glob: '**/*.{cpp,h}').collect { it.path }
+                def folderPath = "src"
+                def folder=new File(folderPath)
+                def CONTEXT_FILES = []
+                if (!folder.exists() || !folder.isDirectory()) {
+                    error "Error: The specified folder '${folderPath}' does not exist or is not a directory."
+                } else {
+                    folder.eachFileRecurse { file ->
+                        if (file.name.endsWith('.cpp') || file.name.endsWith('.h')) {
+                            CONTEXT_FILES << file.path
+                        }
+                    }
+                }
+                
                 echo "Context files found: ${CONTEXT_FILES}"
                 
                 // --- WRITE REQUIREMENTS FILE ---
@@ -158,5 +170,4 @@ post {
         sh 'set +x; make clean'
     }
 }
-
 }
