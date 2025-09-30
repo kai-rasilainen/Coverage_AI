@@ -55,8 +55,10 @@ stages {
                 }
                 withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                     echo "Writing requirements file..."
-                    sh "python3 ai_generate_promt.py '${params.prompt_requirements + combinedContext}' './src' './requirements.md'"
-                }  
+                    def promptForRequirements = """${params.prompt_requirements}""" + combinedContext
+                    echo "This is promptForRequirements: \n" + ${promptForRequirements}
+                    sh "python3 ai_generate_promt.py '${promptForRequirements}' './src' './requirements.md'"
+                }
                 
                 // --- INITIAL BUILD STEP ---
                 // Ensure the test executable is built before running the coverage script.
