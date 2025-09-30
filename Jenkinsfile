@@ -9,7 +9,7 @@ parameters {
         description: 'The console prompt to pass to the script.')
     string(
         name: 'prompt_requirements',
-        defaultValue: """Create a requirements.md file from CONTEXT_FILES provided below.""",
+        defaultValue: """Create a requirements.md file from source code provided.""",
         description: 'The console prompt to pass to the script.')
     string(
         name: 'prompt_coverage',
@@ -55,7 +55,7 @@ stages {
                 }
                 withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                     echo "Writing requirements file..."
-                    def promptForRequirements = """${params.prompt_requirements}""" + combinedContext
+                    def promptForRequirements = ${params.prompt_requirements} + combinedContext
                     echo "This is promptForRequirements: \n" + ${promptForRequirements}
                     sh "python3 ai_generate_promt.py '${promptForRequirements}' './src' './requirements.md'"
                 }
