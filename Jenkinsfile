@@ -32,7 +32,7 @@ stages {
                 def coverage = 0.0
 
                 // Define the files used for context and requirements
-                def REQUIREMENTS_FILE = 'requirements.md'
+                def REQUIREMENTS_FILE = './requirements.md'
                 
                 // --- DYNAMIC FILE DISCOVERY (FIXED GLOB PATTERN) ---
                 // Dynamically find all relevant source files in the 'src' directory, recursively.
@@ -66,7 +66,7 @@ stages {
                         def fileContent = readFile(file: filePath)
                         // Append content with a clear markdown header
                         combinedContext += "## File: ${filePath}\n"
-                        combinedContext += "```cpp\n${fileContent}\n```\n\n"
+                        combinedContext += "\n${fileContent}\n\n\n"
                     } catch (FileNotFoundException e) {
                         echo "Warning: Context file not found: ${filePath}"
                     }
