@@ -36,19 +36,21 @@ stages {
                 
                 // --- DYNAMIC FILE DISCOVERY (FIXED GLOB PATTERN) ---
                 // Dynamically find all relevant source files in the 'src' directory, recursively.
-                def folderPath = "src"
-                def folder=new File(folderPath)
-                def CONTEXT_FILES = []
-                if (!folder.exists() || !folder.isDirectory()) {
-                    error "Error: The specified folder '${folderPath}' does not exist or is not a directory."
-                } else {
-                    folder.eachFileRecurse { file ->
-                        if (file.name.endsWith('.cpp') || file.name.endsWith('.h')) {
-                            CONTEXT_FILES << file.path
-                        }
-                    }
+
+                // Use the built-in Jenkins findFiles step, which is Groovy Sandbox approved.
+                // The 'glob' pattern searches for *.cpp or *.h files recursively within the 'src' directory.
+                def CONTEXT_FILES_LIST = findFiles(glob: 'src/**/*.{cpp,h}')
+
+                // Extract the file paths into a list of strings
+                def CONTEXT_FILES = CONTEXT_FILES_LIST.collect { it.path }
+
+                // Check for empty results and fail gracefully if no files are found.
+                if (CONTEXT_FILES.isEmpty()) {
+                    // You can choose to error or warn here based on if 'src' must contain files.
+                    // Since the original code checked for existence, an error is appropriate if no files are found in 'src'.
+                    error "Error: No .cpp or .h files found in the 'src' directory."
                 }
-                
+
                 echo "Context files found: ${CONTEXT_FILES}"
                 
                 // --- WRITE REQUIREMENTS FILE ---
