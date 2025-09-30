@@ -33,14 +33,18 @@ stages {
 
                 // Define the files used for context and requirements
                 def REQUIREMENTS_FILE = 'requirements.md'
+                
                 // --- DYNAMIC FILE DISCOVERY ---
                 // Dynamically find all relevant source files in the 'src' directory.
                 def CONTEXT_FILES = findFiles(glob: 'src/**/*.{cpp,h}').collect { it.path }
+                
                 // --- WRITE REQUIREMENTS FILE ---
+                
                 // Create an empty requirements file if it doesn't exist.
                 if (!fileExists(REQUIREMENTS_FILE)) {
                     writeFile file: REQUIREMENTS_FILE, text: ''
                 }
+                
                 // Read and concatenate the content of all context files.
                 def combinedContext = ""
                 CONTEXT_FILES.each { filePath ->
@@ -53,11 +57,17 @@ stages {
                         echo "Warning: Context file not found: ${filePath}"
                     }
                 }
+                
+                // FIX: Corrected variable definition by removing illegal interpolation.
+                def promptForRequirements = params.prompt_requirements + combinedContext
+                
                 withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                     echo "Writing requirements file..."
-                    def promptForRequirements = ${params.prompt_requirements} + combinedContext
-                    echo "This is promptForRequirements: \n" + ${promptForRequirements}
-                    sh "python3 ai_generate_promt.py '${promptForRequirements}' './src' './requirements.md'"
+                    // FIX: Corrected interpolation in echo statement.
+                    echo "This is promptForRequirements: \n${promptForRequirements}"
+                    
+                    // FIX: Corrected interpolation in sh call using double quotes and proper variable referencing.
+                    sh "python3 ai_generate_promt.py '${promptForRequirements}' '.' './requirements.md'"
                 }
                 
                 // --- INITIAL BUILD STEP ---
