@@ -36,7 +36,7 @@ stages {
                 
                 // --- DYNAMIC FILE DISCOVERY (FIXED GLOB PATTERN) ---
                 // Dynamically find all relevant source files in the 'src' directory, recursively.
-                def CONTEXT_FILES = findFiles(glob: 'src/**/*.{cpp,h}').collect { it.path }
+                def CONTEXT_FILES = findFiles(glob: '**/*.{cpp,h}').collect { it.path }
                 echo "Context files found: ${CONTEXT_FILES}"
                 
                 // --- WRITE REQUIREMENTS FILE ---
