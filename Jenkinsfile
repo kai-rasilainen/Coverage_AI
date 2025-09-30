@@ -34,10 +34,11 @@ stages {
                 // Define the files used for context and requirements
                 def REQUIREMENTS_FILE = 'requirements.md'
                 
-                // --- DYNAMIC FILE DISCOVERY ---
-                // Dynamically find all relevant source files in the 'src' directory.
+                // --- DYNAMIC FILE DISCOVERY (FIXED GLOB PATTERN) ---
+                // Dynamically find all relevant source files in the 'src' directory, recursively.
                 def CONTEXT_FILES = findFiles(glob: 'src/**/*.{cpp,h}').collect { it.path }
                 echo "Context files found: ${CONTEXT_FILES}"
+                
                 // --- WRITE REQUIREMENTS FILE ---
                 
                 // Create an empty requirements file if it doesn't exist.
@@ -58,15 +59,15 @@ stages {
                     }
                 }
                 
-                // FIX: Corrected variable definition by removing illegal interpolation.
+                // Corrected variable definition by removing illegal interpolation.
                 def promptForRequirements = params.prompt_requirements + combinedContext
                 
                 withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                     echo "Writing requirements file..."
-                    // FIX: Corrected interpolation in echo statement.
+                    // Corrected interpolation in echo statement.
                     echo "This is promptForRequirements: \n${promptForRequirements}"
                     
-                    // FIX: Corrected interpolation in sh call using double quotes and proper variable referencing.
+                    // Corrected interpolation in sh call using double quotes and proper variable referencing.
                     sh "python3 ai_generate_promt.py '${promptForRequirements}' '.' './requirements.md'"
                 }
                 
