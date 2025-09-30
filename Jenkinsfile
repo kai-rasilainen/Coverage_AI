@@ -39,10 +39,9 @@ stages {
 
                 // Use the built-in Jenkins findFiles step, which is Groovy Sandbox approved.
                 // The 'glob' pattern searches for *.cpp or *.h files recursively within the 'src' directory.
-                def CONTEXT_FILES_LIST = findFiles(glob: 'src/**/*.{cpp,h}')
-
-                // Extract the file paths into a list of strings
-                def CONTEXT_FILES = CONTEXT_FILES_LIST.collect { it.path }
+                def CONTEXT_FILES_LIST = findFiles(glob: 'src/**')
+                def CONTEXT_FILES = CONTEXT_FILES_LIST.findAll
+                    { it.path.endsWith('.cpp') || it.path.endsWith('.h') }.collect { it.path }
 
                 // Check for empty results and fail gracefully if no files are found.
                 if (CONTEXT_FILES.isEmpty()) {
