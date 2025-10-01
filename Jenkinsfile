@@ -9,7 +9,7 @@ parameters {
         description: 'The console prompt to pass to the script.')
     string(
         name: 'prompt_requirements',
-        defaultValue: """Create a requirements.md file from source code provided.""",
+        defaultValue: """Create a simple requirements.md file from source code provided below. Focus only for the unit tests.""",
         description: 'The console prompt to pass to the script.')
     string(
         name: 'prompt_coverage',
@@ -106,14 +106,16 @@ stages {
                     // Run coverage script (which executes tests internally)
                     sh './coverage.sh'
 
-                    // --- 1. Read Coverage Data ---
+                    // --- 1. Read Coverage Data (Corrected for CPS serialization) ---
                     // The coverage.sh script places this in the 'build' directory.
                     def coverageInfoContent = readFile(file: "build/coverage.info")
                     def linesFound = 0
                     def linesHit = 0
 
-                    // Parse LCOV file using a serializable pattern (eachLine)
-                    coverageInfoContent.eachLine { line ->
+                    // Split the content into an array of lines and iterate using a safe 'for' loop
+                    def lines = coverageInfoContent.split('\n')
+
+                    for (line in lines) {
                         if (line.startsWith("LF:")) {
                             linesFound = line.substring(3).toInteger()
                         } else if (line.startsWith("LH:")) {
@@ -121,6 +123,7 @@ stages {
                         }
                     }
 
+                    // ... rest of your coverage calculation logic ...
                     if (linesFound > 0) {
                         coverage = (linesHit / linesFound) * 100.0
                     }
