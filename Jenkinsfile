@@ -75,13 +75,16 @@ stages {
                 // Corrected variable definition by removing illegal interpolation.
                 def promptForRequirements = params.prompt_requirements + combinedContext
                 
+                // --- NEW: Define temp file path and write prompt content ---
+                def requirementsPromptFile = "build/prompt_requirements_temp.txt"
+                writeFile file: requirementsPromptFile, text: promptForRequirements, encoding: 'UTF-8' 
+                
                 withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                     echo "Writing requirements file..."
-                    // Corrected interpolation in echo statement.
-                    // echo "This is promptForRequirements: \n${promptForRequirements}"
                     
-                    // Corrected interpolation in sh call using double quotes and proper variable referencing.
-                    sh "python3 ai_generate_promt.py '${promptForRequirements}' '.' './requirements.md'"
+                    // ✅ CORRECTED SH CALL: Uses the required --prompt-file flag.
+                    // Structure: python3 <flag> <prompt_path> <context_file> <output_file>
+                    sh "python3 ai_generate_promt.py --prompt-file '${requirementsPromptFile}' '.' '${REQUIREMENTS_FILE}'"
                 }
                 
                 // --- INITIAL BUILD STEP ---
