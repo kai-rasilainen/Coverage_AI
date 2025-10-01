@@ -176,7 +176,8 @@ stages {
 
                     // 1. Aggressive cleanup: remove AI refusals, boilerplate, and all markdown wrappers
                     def testCaseCode = rawOutput
-                        .replaceAll(/As an AI, I don't have direct access to your local file system.*?\./s, '') // Remove refusal message
+                        // Change '...' to /.../s to correctly use the DOTALL flag (s) and allow .* to match newlines.
+                        .replaceAll(/As an AI, I don't have direct access to your local file system.*?\./s, '') 
                         .replaceAll(/```\s*\w*\s*/, '') // Remove opening code block (e.g., ```cpp, ```text)
                         .replaceAll('```', '')         // Remove closing code block
                         .trim()
