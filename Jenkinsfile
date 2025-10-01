@@ -153,21 +153,17 @@ stages {
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing coverage files, iteration ${iteration}..."
                         
-                        // Use a triple-single-quoted heredoc to safely execute the command.
-                        // We use the 'echo -e' trick to safely escape newlines and single quotes
-                        // for the shell, ensuring the prompt is passed as one string.
-                        sh '''
-                            # Escape single quotes in the prompt and pass it as one quoted string.
-                            PROMPT_CONTENT="$(echo -e "${PROMPT}" | sed "s/'/\\'\\\\''/g" )"
-                            
-                            python3 ai_generate_promt.py "${PROMPT_CONTENT}" "build/coverage.info" "${OUTPUT_PATH}"
-                        '''.stripIndent() // Cleans up leading whitespace from the heredoc, preventing errors
-                        
-                        // Pass variables as environment variables for use in the sh block
-                        environment {
-                            PROMPT = prompt
-                            OUTPUT_PATH = outputPath
-                        }
+                        // 1. Encode the multi-line Groovy 'prompt' variable into Base64
+                        def encodedPrompt = prompt.bytes.encodeBase64().toString()
+
+                        // 2. Pass the Base64 string to the shell command
+                        // Note: You must update your Python script to decode this argument!
+                        sh """
+                            # Python script receives and decodes the Base64 prompt
+                            python3 ai_generate_promt.py "${encodedPrompt}" "build/coverage.info" "${outputPath}"
+                        """
+                        // Pass variables as environment variables is no longer necessary here,
+                        // as we are using standard Groovy interpolation in the triple-double-quoted shell block.
                     }
 
                     // --- 4. Append Generated Test Case (Enhanced Cleanup) ---

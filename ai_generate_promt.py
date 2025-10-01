@@ -54,12 +54,21 @@ def write_to_file(file_path, content):
         print(f"Error writing to file {file_path}: {e}")
 
 if __name__ == '__main__':
-    # Ensure all required arguments are provided
+    # Assume the arguments are passed as: prompt_base64, context_file, output_file
     if len(sys.argv) < 4:
-        print("Usage: python3 ai_generate_promt.py <prompt> <log_path> <output_path>")
+        print("Usage: ai_generate_promt.py <prompt_base64> <context_file> <output_file>")
         sys.exit(1)
 
-    prompt = sys.argv[1]
+    # Decode the Base64 prompt argument
+    prompt_base64 = sys.argv[1]
+    try:
+        decoded_bytes = base64.b64decode(prompt_base64)
+        prompt = decoded_bytes.decode('utf-8')
+    except Exception as e:
+        # Handle the error if decoding fails (e.g., if a wrong argument is passed)
+        print(f"Error decoding prompt: {e}")
+        sys.exit(1)
+
     log_path = sys.argv[2]
     output_path = sys.argv[3]
     api_key = get_gemini_api_key()
