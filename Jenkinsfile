@@ -135,22 +135,19 @@ stages {
                     def reqSpecContent = readFile(file: REQUIREMENTS_FILE, encoding: 'UTF-8')
                     def coverageReportContent = readFile(file: "coverage_report/index.html", encoding: 'UTF-8')
 
-                    // --- 3. Assemble Final Prompt ---
+                     // --- 3. Assemble Final Prompt ---
                     def prompt = """${params.prompt_coverage}
+                        Function Requirements Specification:
+                        ${reqSpecContent}
+                        Coverage Report Content:
+                        ${coverageReportContent}"""
 
-                    Function Requirements Specification:
-                    ${reqSpecContent}
-
-                    Coverage Report Content:
-                    ${coverageReportContent}"""
-
-                    // --- Variable Definitions and File Setup ---
-                    // Define the file paths needed for the 'sh' command
+                    // --- Variable Definitions and File Setup (Defined FIRST) ---
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
                     def promptFilePath = "build/prompt_content_iter_${iteration}.txt"
                     def contextFilePath = 'build/coverage.info' // The first positional argument
 
-                    // 1. Write the multi-line prompt content to the temporary file (MUST BE FIRST)
+                    // 1. Write the multi-line prompt content to the temporary file (MUST BE BEFORE 'sh')
                     writeFile file: promptFilePath, text: prompt, encoding: 'UTF-8' 
 
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
@@ -162,15 +159,15 @@ stages {
                     }
 
                     // --- 4. Append Generated Test Case (Enhanced Cleanup) ---
-                    // ... (The rest of your logic for reading and cleaning the output is fine here) ...
+
                     def rawOutput = readFile(file: outputPath, encoding: 'UTF-8')
 
                     // 1. Aggressive cleanup: remove AI refusals, boilerplate, and all markdown wrappers
                     // Define the pattern to look for the AI's refusal message
+                    // Note: (?s) is the DOTALL flag, allowing '.' to match newlines
                     def refusalPattern = ~/(?s)As an AI, I don't have direct access to your local file system.*?\./
 
                     // Use replaceFirst to remove the refusal message from the raw output.
-                    // The (?s) at the start of the regex enables DOTALL mode (s flag) within the pattern itself.
                     def testCaseCode = rawOutput.replaceFirst(refusalPattern, '')
                         .replaceAll(/```\s*\w*\s*/, '') // Remove opening code block
                         .replaceAll('```', '')         // Remove closing code block
