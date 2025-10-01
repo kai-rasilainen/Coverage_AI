@@ -13,12 +13,7 @@ parameters {
         description: 'The console prompt to pass to the script.')
     string(
         name: 'prompt_coverage',
-        defaultValue: """Provide a C++ test case source code to improve code coverage for the coverage reports in folder reports.
-
-The tests must use the format EXPECT_EQ(expected, actual).
-You must use the header file: #include "number_to_string.h".
-Use the Google Test framework and the same style as test_number_to_string.cpp.
-Write nothing else than code.""",
+        defaultValue: """Based only on the context provided, generate the C++ source code for a Google Test case. DO NOT include explanations, comments, or markdown wrappers. Only output the raw C++ code.""",
 description: 'The coverage prompt to pass to the script.')
 }
 
@@ -165,7 +160,13 @@ stages {
                     // --- 4. Append Generated Test Case ---
 
                     // Read generated test case and append to test file
-                    def testCaseCode = readFile(file: outputPath).replaceAll('```cpp', '').replaceAll('```', '').trim()
+                    def testCaseCode = readFile(file: outputPath)
+                        // Remove the opening markdown block, including the language hint (text, cpp, etc.)
+                        .replaceAll(/```\s*\w*\s*/, '') 
+                        // Remove the closing markdown block
+                        .replaceAll('```', '')
+                        // Remove any leading/trailing whitespace, including newlines
+                        .trim()
                     writeFile(file: "tests/ai_generated_tests.cpp", text: testCaseCode, append: true)
 
                     // Rebuild tests for next iteration (DO NOT RUN HERE)
