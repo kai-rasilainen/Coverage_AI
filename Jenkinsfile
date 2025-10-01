@@ -63,7 +63,7 @@ stages {
                 def combinedContext = ""
                 CONTEXT_FILES.each { filePath ->
                     try {
-                        def fileContent = readFile(file: filePath)
+                        def fileContent = readFile(file: filePath, encoding: 'UTF-8')
                         // Append content with a clear markdown header
                         combinedContext += "## File: ${filePath}\n"
                         combinedContext += "\n${fileContent}\n\n\n"
@@ -103,7 +103,7 @@ stages {
 
                     // --- 1. Read Coverage Data (Corrected for CPS serialization) ---
                     // The coverage.sh script places this in the 'build' directory.
-                    def coverageInfoContent = readFile(file: "build/coverage.info")
+                    def coverageInfoContent = readFile(file: "build/coverage.info", encoding: 'UTF-8')
                     def linesFound = 0
                     def linesHit = 0
 
@@ -132,8 +132,8 @@ stages {
 
                     // --- 2. Read Context and Requirements ---
 
-                    def reqSpecContent = readFile(file: REQUIREMENTS_FILE)
-                    def coverageReportContent = readFile(file: "coverage_report/index.html")
+                    def reqSpecContent = readFile(file: REQUIREMENTS_FILE, encoding: 'UTF-8')
+                    def coverageReportContent = readFile(file: "coverage_report/index.html", encoding: 'UTF-8')
 
                     // --- 3. Assemble Final Prompt ---
                     def prompt = """${params.prompt_coverage}
@@ -154,7 +154,8 @@ stages {
                         echo "Analyzing coverage files, iteration ${iteration}..."
                         
                         // 1. Encode the multi-line Groovy 'prompt' variable into Base64
-                        def encodedPrompt = prompt.bytes.encodeBase64().toString()
+                        // Use getBytes('UTF-8') to guarantee UTF-8 byte representation
+                        def encodedPrompt = prompt.getBytes('UTF-8').encodeBase64().toString()
 
                         // 2. Pass the Base64 string to the shell command
                         // Note: You must update your Python script to decode this argument!
@@ -168,7 +169,7 @@ stages {
 
                     // --- 4. Append Generated Test Case (Enhanced Cleanup) ---
 
-                    def rawOutput = readFile(file: outputPath)
+                    def rawOutput = readFile(file: outputPath, encoding: 'UTF-8')
 
                     // 1. Aggressive cleanup: remove AI refusals, boilerplate, and all markdown wrappers
                     // Define the pattern to look for the AI's refusal message
@@ -187,7 +188,7 @@ stages {
                     }
 
                     // Use the safe Groovy workaround for 'append'
-                    def existingContent = readFile(file: testFile)
+                    def existingContent = readFile(file: testFile, encoding: 'UTF-8')
                     def newContent = existingContent + "\n" + testCaseCode
                     writeFile(file: testFile, text: newContent)
 
