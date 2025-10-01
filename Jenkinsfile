@@ -144,26 +144,25 @@ stages {
                     Coverage Report Content:
                     ${coverageReportContent}"""
 
-                    // --- NEW: Write the prompt to a temporary file ---
+                    // --- Variable Definitions and File Setup ---
+                    // Define the file paths needed for the 'sh' command
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
-                    sh "python3 ai_generate_promt.py --prompt-file '${promptFilePath}' '${args.context_file}' '${outputPath}'"
+                    def promptFilePath = "build/prompt_content_iter_${iteration}.txt"
+                    def contextFilePath = 'build/coverage.info' // The first positional argument
 
-                    // 1. Write the multi-line prompt content to a temporary file
-                    // Use explicit UTF-8 encoding here to sanitize the data before writing
+                    // 1. Write the multi-line prompt content to the temporary file (MUST BE FIRST)
                     writeFile file: promptFilePath, text: prompt, encoding: 'UTF-8' 
 
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing coverage files, iteration ${iteration}..."
                         
-                        // 2. Pass the temporary file PATH to the Python script
-                        // The Python script will read the content of this file.
-                        // Pass other arguments as usual.
-                        // --- CORRECTED sh COMMAND ---
-                        sh "python3 ai_generate_promt.py --prompt-file '${promptFilePath}' 'build/coverage.info' '${outputPath}'"
+                        // 2. Call the Python script with all required arguments.
+                        // Structure: --prompt-file <path> <context_file> <output_file>
+                        sh "python3 ai_generate_promt.py --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}'"
                     }
 
                     // --- 4. Append Generated Test Case (Enhanced Cleanup) ---
-
+                    // ... (The rest of your logic for reading and cleaning the output is fine here) ...
                     def rawOutput = readFile(file: outputPath, encoding: 'UTF-8')
 
                     // 1. Aggressive cleanup: remove AI refusals, boilerplate, and all markdown wrappers
