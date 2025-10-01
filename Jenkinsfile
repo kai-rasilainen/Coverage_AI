@@ -145,26 +145,20 @@ stages {
                     ${coverageReportContent}"""
 
                     // --- NEW: Write the prompt to a temporary file ---
-                    def promptFilePath = "build/prompt_iteration_${iteration}.txt"
-                    writeFile file: promptFilePath, text: prompt
-                    
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
-                    
+                    def promptFilePath = "build/prompt_content.txt" // Use a temporary file name
+
+                    // 1. Write the multi-line prompt content to a temporary file
+                    // Use explicit UTF-8 encoding here to sanitize the data before writing
+                    writeFile file: promptFilePath, text: prompt, encoding: 'UTF-8' 
+
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing coverage files, iteration ${iteration}..."
                         
-                        // 1. Encode the multi-line Groovy 'prompt' variable into Base64
-                        // Use getBytes('UTF-8') to guarantee UTF-8 byte representation
-                        def encodedPrompt = prompt.getBytes('UTF-8').encodeBase64().toString()
-
-                        // 2. Pass the Base64 string to the shell command
-                        // Note: You must update your Python script to decode this argument!
-                        sh """
-                            # Python script receives and decodes the Base64 prompt
-                            python3 ai_generate_promt.py "${encodedPrompt}" "build/coverage.info" "${outputPath}"
-                        """
-                        // Pass variables as environment variables is no longer necessary here,
-                        // as we are using standard Groovy interpolation in the triple-double-quoted shell block.
+                        // 2. Pass the temporary file PATH to the Python script
+                        // The Python script will read the content of this file.
+                        // Pass other arguments as usual.
+                        sh "python3 ai_generate_promt.py --prompt-file '${promptFilePath}' 'build/coverage.info' '${outputPath}'"
                     }
 
                     // --- 4. Append Generated Test Case (Enhanced Cleanup) ---
