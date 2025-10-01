@@ -175,10 +175,13 @@ stages {
                     def rawOutput = readFile(file: outputPath)
 
                     // 1. Aggressive cleanup: remove AI refusals, boilerplate, and all markdown wrappers
-                    def testCaseCode = rawOutput
-                        // Change '...' to /.../s to correctly use the DOTALL flag (s) and allow .* to match newlines.
-                        .replaceAll(/As an AI, I don't have direct access to your local file system.*?\./s, '') 
-                        .replaceAll(/```\s*\w*\s*/, '') // Remove opening code block (e.g., ```cpp, ```text)
+                    // Define the pattern to look for the AI's refusal message
+                    def refusalPattern = ~/(?s)As an AI, I don't have direct access to your local file system.*?\./
+
+                    // Use replaceFirst to remove the refusal message from the raw output.
+                    // The (?s) at the start of the regex enables DOTALL mode (s flag) within the pattern itself.
+                    def testCaseCode = rawOutput.replaceFirst(refusalPattern, '')
+                        .replaceAll(/```\s*\w*\s*/, '') // Remove opening code block
                         .replaceAll('```', '')         // Remove closing code block
                         .trim()
 
