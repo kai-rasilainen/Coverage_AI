@@ -146,7 +146,7 @@ stages {
 
                     // --- NEW: Write the prompt to a temporary file ---
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
-                    def promptFilePath = "build/prompt_content.txt" // Use a temporary file name
+                    sh "python3 ai_generate_promt.py --prompt-file '${promptFilePath}' '${args.context_file}' '${outputPath}'"
 
                     // 1. Write the multi-line prompt content to a temporary file
                     // Use explicit UTF-8 encoding here to sanitize the data before writing
