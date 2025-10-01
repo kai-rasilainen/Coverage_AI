@@ -143,17 +143,23 @@ stages {
                     // --- 3. Assemble Final Prompt ---
                     def prompt = """${params.prompt_coverage}
 
-Function Requirements Specification:
-${reqSpecContent}
+                    Function Requirements Specification:
+                    ${reqSpecContent}
 
-Coverage Report Content:
-${coverageReportContent}"""
+                    Coverage Report Content:
+                    ${coverageReportContent}"""
 
+                    // --- NEW: Write the prompt to a temporary file ---
+                    def promptFilePath = "build/prompt_iteration_${iteration}.txt"
+                    writeFile file: promptFilePath, text: prompt
+                    
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
 
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing coverage files, iteration ${iteration}..."
-                        sh "python3 ai_generate_promt.py '${prompt}' 'build/coverage.info' '${outputPath}'"
+                        
+                        // --- CORRECTED SH CALL: Pass the temporary filename instead of the content ---
+                        sh "python3 ai_generate_promt.py '@${promptFilePath}' 'build/coverage.info' '${outputPath}'"
                     }
 
                     // --- 4. Append Generated Test Case ---
