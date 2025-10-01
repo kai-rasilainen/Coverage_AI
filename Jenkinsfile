@@ -158,6 +158,7 @@ stages {
                         // 2. Pass the temporary file PATH to the Python script
                         // The Python script will read the content of this file.
                         // Pass other arguments as usual.
+                        // --- CORRECTED sh COMMAND ---
                         sh "python3 ai_generate_promt.py --prompt-file '${promptFilePath}' 'build/coverage.info' '${outputPath}'"
                     }
 
