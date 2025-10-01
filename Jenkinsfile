@@ -149,25 +149,47 @@ stages {
                     writeFile file: promptFilePath, text: prompt
                     
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
-
+                    
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing coverage files, iteration ${iteration}..."
                         
-                        // --- CORRECTED SH CALL: Pass the temporary filename instead of the content ---
-                        sh "python3 ai_generate_promt.py '@${promptFilePath}' 'build/coverage.info' '${outputPath}'"
+                        // Use a triple-single-quoted heredoc to safely execute the command.
+                        // We use the 'echo -e' trick to safely escape newlines and single quotes
+                        // for the shell, ensuring the prompt is passed as one string.
+                        sh '''
+                            # Escape single quotes in the prompt and pass it as one quoted string.
+                            PROMPT_CONTENT="$(echo -e "${PROMPT}" | sed "s/'/\\'\\\\''/g" )"
+                            
+                            python3 ai_generate_promt.py "${PROMPT_CONTENT}" "build/coverage.info" "${OUTPUT_PATH}"
+                        '''.stripIndent() // Cleans up leading whitespace from the heredoc, preventing errors
+                        
+                        // Pass variables as environment variables for use in the sh block
+                        environment {
+                            PROMPT = prompt
+                            OUTPUT_PATH = outputPath
+                        }
                     }
 
-                    // --- 4. Append Generated Test Case ---
+                    // --- 4. Append Generated Test Case (Enhanced Cleanup) ---
 
-                    // Read generated test case and append to test file
-                    def testCaseCode = readFile(file: outputPath)
-                        // Remove the opening markdown block, including the language hint (text, cpp, etc.)
-                        .replaceAll(/```\s*\w*\s*/, '') 
-                        // Remove the closing markdown block
-                        .replaceAll('```', '')
-                        // Remove any leading/trailing whitespace, including newlines
+                    def rawOutput = readFile(file: outputPath)
+
+                    // 1. Aggressive cleanup: remove AI refusals, boilerplate, and all markdown wrappers
+                    def testCaseCode = rawOutput
+                        .replaceAll(/As an AI, I don't have direct access to your local file system.*?\./s, '') // Remove refusal message
+                        .replaceAll(/```\s*\w*\s*/, '') // Remove opening code block (e.g., ```cpp, ```text)
+                        .replaceAll('```', '')         // Remove closing code block
                         .trim()
-                    writeFile(file: "tests/ai_generated_tests.cpp", text: testCaseCode, append: true)
+
+                    // If the resulting string is empty, the AI refused or provided no code.
+                    if (testCaseCode.isEmpty()) {
+                        error "AI refused the prompt or generated no code. Check the model output."
+                    }
+
+                    // Use the safe Groovy workaround for 'append'
+                    def existingContent = readFile(file: testFile)
+                    def newContent = existingContent + "\n" + testCaseCode
+                    writeFile(file: testFile, text: newContent)
 
                     // Rebuild tests for next iteration (DO NOT RUN HERE)
                     echo "Rebuilding test executable..."
