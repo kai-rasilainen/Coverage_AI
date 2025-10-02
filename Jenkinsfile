@@ -161,17 +161,17 @@ stages {
                         sh "python3 ai_generate_promt.py --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}'"
                     }
 
-                    // --- 4. Append Generated Test Case (Enhanced Cleanup) ---
+                    // --- 4. Append Generated Test Case (Corrected Cleanup) ---
 
                     def rawOutput = readFile(file: outputPath, encoding: 'UTF-8')
 
-                    // 1. Aggressive cleanup: remove AI refusals, boilerplate, and all markdown wrappers
-                    // Define the pattern to look for the AI's refusal message
-                    // Note: (?s) is the DOTALL flag, allowing '.' to match newlines
-                    def refusalPattern = ~/(?s)As an AI, I don't have direct access to your local file system.*?\./
-
-                    // Use replaceFirst to remove the refusal message from the raw output.
-                    def testCaseCode = rawOutput.replaceFirst(refusalPattern, '')
+                    // Use a simple String for the refusal text to match the safest method signature,
+                    // or use replaceAll with the Groovy regex pattern. replaceAll is often whitelisted.
+                    def testCaseCode = rawOutput
+                        // Use replaceAll with the Groovy regex syntax. This is more likely to be whitelisted
+                        // than the replaceFirst signature.
+                        .replaceAll(/(?s)As an AI, I don't have direct access to your local file system.*?\./, '') 
+                        
                         .replaceAll(/```\s*\w*\s*/, '') // Remove opening code block
                         .replaceAll('```', '')         // Remove closing code block
                         .trim()
