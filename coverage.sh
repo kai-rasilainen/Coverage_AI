@@ -39,10 +39,10 @@ fi
 
 echo "--- 3. Capturing coverage data using LCOV with the correct GCOV tool ---"
 
-# Redirects standard error (2) to /dev/null to hide mismatch warnings.
+# Change the directory from "$BUILD_DIR" to "." to capture all files recursively.
 lcov --gcov-tool "$GCOV_TOOL" \
 --capture \
---directory "$BUILD_DIR" \
+--directory "." \
 --output-file "$COVERAGE_INFO.tmp" \
 --base-directory "." \
 --ignore-errors mismatch,empty 2> /dev/null
