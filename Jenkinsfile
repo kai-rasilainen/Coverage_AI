@@ -13,14 +13,14 @@ parameters {
         description: 'The console prompt to pass to the script.')
     string(
         name: 'prompt_coverage',
-        defaultValue: """Based only on the context provided, generate the C++ source code for a Google Test case. 
-        The test code must use the format EXPECT_EQ(expected, actual).
-        You must use the header file: #include "number_to_string.h".
-        DO NOT include any supporting class or struct definitions (like NumberGroup).
-        DO NOT include any headers (like iostream or gtest).
-        DO NOT include explanations, comments, or markdown wrappers. 
-        Only output the raw C++ code for the test function.""",
-        description: 'The coverage prompt to pass to the script.')
+        defaultValue: """Based only on the context provided, generate the C++ source code for a Google Test case.
+The test code must use the format EXPECT_EQ(expected, actual).
+You must use the header file: #include "number_to_string.h".
+DO NOT include any supporting class or struct definitions (like NumberGroup).
+DO NOT include any headers (like iostream or gtest).
+DO NOT include explanations, comments, or markdown wrappers.
+Only output the raw C++ code for the test function.""",
+description: 'The coverage prompt to pass to the script.')
 }
 
 // The 'stages' block contains the logical divisions of your build process.
@@ -100,12 +100,15 @@ stages {
                 sh 'set +x; make build/test_number_to_string'
 
                 while (iteration < maxIterations) {
-                    // Check if the AI-generated test file exists and create it if it doesn't.
                     def testFile = "tests/ai_generated_tests.cpp"
-                    if (!fileExists(testFile)) {
-                        echo "Creating empty ai_generated_tests.cpp"
-                        writeFile file: testFile, text: ''
-                    }
+                    
+                    // --- CLEAR & SETUP: Clear the file and add necessary headers only once ---
+                    echo "Preparing ai_generated_tests.cpp for iteration ${iteration}"
+                    
+                    // We overwrite the file in each iteration with the necessary headers/boilerplate
+                    // to prevent redefinitions, and then we will read back ALL previous tests 
+                    // and append the new one. This ensures we start clean every time.
+                    writeFile file: testFile, text: '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n'
 
                     // Run coverage script (which executes tests internally)
                     sh './coverage.sh'
@@ -187,10 +190,14 @@ stages {
                         error "AI refused the prompt or generated no code. Check the model output."
                     }
 
-                    // Use the safe Groovy workaround for 'append'
+                    // If testFile exists, readFile will get the old tests (if any)
                     def existingContent = readFile(file: testFile, encoding: 'UTF-8')
+                    
+                    // Combine old content with new, cleaned test case code
                     def newContent = existingContent + "\n" + testCaseCode
-                    writeFile(file: testFile, text: newContent)
+                    
+                    // Overwrite the file with ALL cumulative tests.
+                    writeFile(file: testFile, text: newContent) 
 
                     // Rebuild tests for next iteration (DO NOT RUN HERE)
                     echo "Rebuilding test executable..."
