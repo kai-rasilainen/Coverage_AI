@@ -37,24 +37,23 @@ echo "ERROR: Test executable '$TEST_EXEC' not found or not executable. Did the c
 exit 1
 fi
 
-echo "--- 3. Capturing coverage data using LCOV with the correct GCOV tool ---"
+echo "--- 3. Capturing coverage data for source files only ---"
 
-# Change the directory from "$BUILD_DIR" to "." to capture all files recursively.
+# We use '*/src/*' to include only files within the source directory.
 lcov --gcov-tool "$GCOV_TOOL" \
 --capture \
 --directory "." \
+--include '*/src/*' \
 --output-file "$COVERAGE_INFO.tmp" \
 --base-directory "." \
 --ignore-errors mismatch,empty 2> /dev/null
 
-echo "--- 4. Filtering out test code, gtest files, and system headers ---"
+echo "--- 4. Filtering out system headers ---"
 
-# Redirects standard error (2) to /dev/null to hide unused errors.
+# Only remove system includes; the source files (tests, gtest) were excluded in step 3.
 lcov --gcov-tool "$GCOV_TOOL" \
 --remove "$COVERAGE_INFO.tmp" \
 '*/usr/include/*' \
-'*/tests/*' \
-'*/ai_generated_tests.cpp' \
 --output-file "$COVERAGE_INFO" \
 --ignore-errors unused,empty 2> /dev/null
 
