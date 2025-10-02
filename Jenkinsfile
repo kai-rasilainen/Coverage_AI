@@ -13,8 +13,14 @@ parameters {
         description: 'The console prompt to pass to the script.')
     string(
         name: 'prompt_coverage',
-        defaultValue: """Based only on the context provided, generate the C++ source code for a Google Test case. DO NOT include explanations, comments, or markdown wrappers. Only output the raw C++ code.""",
-description: 'The coverage prompt to pass to the script.')
+        defaultValue: """Based only on the context provided, generate the C++ source code for a Google Test case. 
+        The test code must use the format EXPECT_EQ(expected, actual).
+        You must use the header file: #include "number_to_string.h".
+        DO NOT include any supporting class or struct definitions (like NumberGroup).
+        DO NOT include any headers (like iostream or gtest).
+        DO NOT include explanations, comments, or markdown wrappers. 
+        Only output the raw C++ code for the test function.""",
+        description: 'The coverage prompt to pass to the script.')
 }
 
 // The 'stages' block contains the logical divisions of your build process.
