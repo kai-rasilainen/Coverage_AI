@@ -101,6 +101,7 @@ stages {
 
                 while (iteration < maxIterations) {
                     def testFile = "tests/ai_generated_tests.cpp"
+                    def testFileSave = "tests/ai_generated_tests_iter_${iteration}.txt"
                     
                     // --- CLEAR & SETUP: Clear the file and add necessary headers only once ---
                     echo "Preparing ai_generated_tests.cpp for iteration ${iteration}"
@@ -109,6 +110,7 @@ stages {
                     // to prevent redefinitions, and then we will read back ALL previous tests 
                     // and append the new one. This ensures we start clean every time.
                     writeFile file: testFile, text: '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n'
+                    writeFile file: testFileSave, text: '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n'
 
                     // Run coverage script (which executes tests internally)
                     sh './coverage.sh'
@@ -180,7 +182,6 @@ stages {
                         // Use replaceAll with the Groovy regex syntax. This is more likely to be whitelisted
                         // than the replaceFirst signature.
                         .replaceAll(/(?s)As an AI, I don't have direct access to your local file system.*?\./, '') 
-                        
                         .replaceAll(/```\s*\w*\s*/, '') // Remove opening code block
                         .replaceAll('```', '')         // Remove closing code block
                         .trim()
@@ -192,12 +193,15 @@ stages {
 
                     // If testFile exists, readFile will get the old tests (if any)
                     def existingContent = readFile(file: testFile, encoding: 'UTF-8')
+                    def existingContentSave = readFile(file: testFileSave, encoding: 'UTF-8')
                     
                     // Combine old content with new, cleaned test case code
                     def newContent = existingContent + "\n" + testCaseCode
+                    def newContentSave = existingContentSave + "\n" + testCaseCode
                     
                     // Overwrite the file with ALL cumulative tests.
-                    writeFile(file: testFile, text: newContent) 
+                    writeFile(file: testFile, text: newContent)
+                    writeFile(file: testFileSave, text: newContentSave)
 
                     // Rebuild tests for next iteration (DO NOT RUN HERE)
                     echo "Rebuilding test executable..."
