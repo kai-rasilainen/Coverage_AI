@@ -22,11 +22,11 @@ all: $(BUILD_DIR) $(TARGET) $(TEST_BINARY)
 
 # Create the build directory
 $(BUILD_DIR):
-    mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
 
 # Build the main application
 $(TARGET): $(SRC)
-    $(CXX) $(CXXFLAGS) -o $@ $(SRC)
+	$(CXX) $(CXXFLAGS) -o $@ $(SRC)
 
 # ---------------------------------
 # CORRECTED: Build the test executable rule
@@ -45,4 +45,3 @@ clean:
 # A new test target that your coverage script can use
 test: $(TEST_BINARY)
 	./$(TEST_BINARY)
-	
