@@ -32,10 +32,9 @@ $(TARGET): $(SRC)
 # CORRECTED: Build the test executable rule (REMOVED -lpthread)
 # ---------------------------------
 $(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
-	# IMPORTANT: Removed -lpthread. Linker requires source files before libraries.
 	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
 	-o $@ $(TEST_SRC) \
-	-lgtest -lgtest_main # <-- Removed -lpthread here
+	-lgtest -lgtest_main -lpthread
 
 # Clean up
 clean:
