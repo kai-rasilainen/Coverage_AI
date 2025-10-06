@@ -42,7 +42,7 @@ echo "--- 3. Capturing coverage data for source files only ---"
 # We use '*/src/*' to include only files within the source directory.
 lcov --gcov-tool "$GCOV_TOOL" \
 --capture \
---directory "." \
+--directory "build" \
 --include '*/src/*' \
 --output-file "$COVERAGE_INFO.tmp" \
 --base-directory "." \
