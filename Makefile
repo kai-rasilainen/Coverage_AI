@@ -4,8 +4,7 @@ GCOV_FLAGS = --coverage
 CXXFLAGS = -std=c++17 -Wall -Wextra -I./src
 # New value (with ABI fix):
 CXXFLAGS_GTEST = -std=c++17 -Wall -Wextra -I./src -I/usr/include/gtest -D_GLIBCXX_USE_CXX11_ABI=0
-
-# Executable paths
+GTEST = /usr/local/lib/libgtest.a
 SRC = src/main.cpp src/number_to_string.cpp
 TEST_SRC = tests/test_number_to_string.cpp tests/ai_generated_tests.cpp src/number_to_string.cpp
 BUILD_DIR = build
@@ -33,8 +32,7 @@ $(TARGET): $(SRC)
 # ---------------------------------
 $(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
 	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
-	-o $@ $(TEST_SRC) \
-	-lgtest -lgtest_main -lpthread
+	-o $@ $(TEST_SRC) $(GTEST) # Ensure this is a TAB
 
 # Clean up
 clean:
