@@ -7,7 +7,6 @@ CXXFLAGS_GTEST = -std=c++17 -Wall -Wextra -I./src -I/usr/include/gtest -D_GLIBCX
 
 # Executable paths
 SRC = src/main.cpp src/number_to_string.cpp
-# We need src/number_to_string.cpp in the TEST_SRC list so its code is linked and covered.
 TEST_SRC = tests/test_number_to_string.cpp tests/ai_generated_tests.cpp src/number_to_string.cpp
 BUILD_DIR = build
 TARGET = $(BUILD_DIR)/main
@@ -23,26 +22,25 @@ all: $(BUILD_DIR) $(TARGET) $(TEST_BINARY)
 
 # Create the build directory
 $(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR) # Ensure this is a TAB
 
 # Build the main application
 $(TARGET): $(SRC)
-	$(CXX) $(CXXFLAGS) -o $@ $(SRC)
+	$(CXX) $(CXXFLAGS) -o $@ $(SRC) # Ensure this is a TAB
 
 # ---------------------------------
-# CORRECTED: Build the test executable rule
+# CORRECTED: Build the test executable rule (REMOVED -lpthread)
 # ---------------------------------
 $(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
-	# IMPORTANT: Linker requires source files (or object files) that call GTest 
-	# functions to appear BEFORE the GTest libraries.
+	# IMPORTANT: Removed -lpthread. Linker requires source files before libraries.
 	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
 	-o $@ $(TEST_SRC) \
-	-lgtest -lgtest_main -lpthread
+	-lgtest -lgtest_main # <-- Removed -lpthread here
 
 # Clean up
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) # Ensure this is a TAB
 
 # A new test target that your coverage script can use
 test: $(TEST_BINARY)
-	./$(TEST_BINARY)
+	./$(TEST_BINARY) # Ensure this is a TAB
