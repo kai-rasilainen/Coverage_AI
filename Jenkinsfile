@@ -91,8 +91,9 @@ stages {
                     // ✅ CORRECTED SH CALL: Uses the required --prompt-file flag.
                     // Structure: python3 <flag> <prompt_path> <context_file> <output_file>
                     sh """
-                    . venv/bin/activate
-                    python3 ai_generate_promt.py --prompt-file '${requirementsPromptFile}' '.' '${REQUIREMENTS_FILE}'
+                    # We no longer need to run the full activation script.
+                    # Simply call the python executable directly from the venv/bin folder.
+                    ./venv/bin/python3 ai_generate_promt.py --prompt-file '${requirementsPromptFile}' '.' '${REQUIREMENTS_FILE}'
                     """
                 }
                 
@@ -173,8 +174,9 @@ stages {
                         // 2. Call the Python script with all required arguments.
                         // Structure: --prompt-file <path> <context_file> <output_file>
                         sh """
-                        . venv/bin/activate
-                        python3 ai_generate_promt.py --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}'
+                        # We no longer need to run the full activation script.
+                        # Simply call the python executable directly from the venv/bin folder.
+                        ./venv/bin/python3 ai_generate_promt.py --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}'
                         """
                     }
 
