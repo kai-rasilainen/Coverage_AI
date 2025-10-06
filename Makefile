@@ -1,5 +1,5 @@
 # Compiler and flags
-CXX = g++-10
+CXX = g++-11
 GCOV_FLAGS = --coverage
 CXXFLAGS = -std=c++17 -Wall -Wextra -I./src
 # New value (with ABI fix):
