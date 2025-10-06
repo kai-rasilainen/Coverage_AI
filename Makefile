@@ -2,7 +2,8 @@
 CXX = g++
 GCOV_FLAGS = --coverage
 CXXFLAGS = -std=c++17 -Wall -Wextra -I./src
-CXXFLAGS_GTEST = -std=c++17 -Wall -Wextra -I./src -I/usr/include/gtest
+# New value (with ABI fix):
+CXXFLAGS_GTEST = -std=c++17 -Wall -Wextra -I./src -I/usr/include/gtest -D_GLIBCXX_USE_CXX11_ABI=0
 
 # Executable paths
 SRC = src/main.cpp src/number_to_string.cpp
