@@ -32,6 +32,24 @@ stages {
                 def iteration = 0
                 def coverage = 0.0
 
+                // --- NEW STEP: VENV SETUP AND DEPENDENCY INSTALLATION ---
+                echo "Setting up Python virtual environment and installing dependencies..."
+                // Ensure you have python3 and venv module installed on the agent system!
+                sh '''
+                    # 1. Create the virtual environment in the workspace
+                    python3 -m venv venv || python -m venv venv
+                    
+                    # 2. Activate the VENV and install required packages
+                    . venv/bin/activate
+                    
+                    # Install requests (and any other package, like the Google GenAI SDK if needed)
+                    pip install requests
+                    # pip install google-genai
+                    
+                    # Deactivate the environment after setup
+                    deactivate
+                '''
+
                 // Define the files used for context and requirements
                 def REQUIREMENTS_FILE = './requirements.md'
                 
