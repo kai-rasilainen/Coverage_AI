@@ -90,7 +90,10 @@ stages {
                     
                     // ✅ CORRECTED SH CALL: Uses the required --prompt-file flag.
                     // Structure: python3 <flag> <prompt_path> <context_file> <output_file>
-                    sh "python3 ai_generate_promt.py --prompt-file '${requirementsPromptFile}' '.' '${REQUIREMENTS_FILE}'"
+                    sh """
+                    source venv/bin/activate
+                    python3 ai_generate_promt.py --prompt-file '${requirementsPromptFile}' '.' '${REQUIREMENTS_FILE}'
+                    """
                 }
                 
                 // --- INITIAL BUILD STEP ---
@@ -169,7 +172,10 @@ stages {
                         
                         // 2. Call the Python script with all required arguments.
                         // Structure: --prompt-file <path> <context_file> <output_file>
-                        sh "python3 ai_generate_promt.py --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}'"
+                        sh """
+                        source venv/bin/activate
+                        python3 ai_generate_promt.py --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}'
+                        """
                     }
 
                     // --- 4. Append Generated Test Case (Corrected Cleanup) ---
