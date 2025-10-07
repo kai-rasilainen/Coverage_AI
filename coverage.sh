@@ -2,7 +2,7 @@
 
 # --- Configuration ---
 # Set the GCOV_TOOL to match the compiler version (g++-11 in your case)
-GCOV_TOOL="/usr/bin/gcov-11"
+GCOV_TOOL="/usr/bin/gcov-13"
 BUILD_DIR="build"
 TEST_EXEC="${BUILD_DIR}/test_number_to_string"
 REPORT_DIR="coverage_report"
