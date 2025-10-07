@@ -32,7 +32,8 @@ $(TARGET): $(SRC)
 # ---------------------------------
 $(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
 	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
-	-o $@ $(TEST_SRC) $(GTEST) -lpthread
+	-o build/test_number_to_string tests/test_number_to_string.cpp tests/ai_generated_tests.cpp src/number_to_string.cpp \
+	-lgtest -lgtest_main -lpthread -lstdc++
 
 # Clean up
 clean:
