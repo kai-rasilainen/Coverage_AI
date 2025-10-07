@@ -30,20 +30,22 @@ $(TARGET): $(SRC)
 # ---------------------------------
 # CORRECTED: Build the test executable rule (REMOVED -lpthread)
 # ---------------------------------
-# Define the path to the NEWLY COMPILED LIBRARIES
-GTEST_LIB_PATH = /usr/src/googletest/googletest/build/lib
+# Define the path to the newly COMPILED GTest LIBRARIES
+# This is where your successful 'ls' showed the files are located.
+NEW_GTEST_LIB_PATH = /usr/src/googletest/googletest/build/lib
 
 $(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
-	# Link order: Source -> GMock -> GTest -> Standard Libs
+	# FINAL LINKAGE ATTEMPT: Link new GTest files + old system GMock files
 	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
 	-o $@ $(TEST_SRC) \
 	-I/usr/src/googletest/googletest/include \
 	\
-	$(GTEST_LIB_PATH)/libgmock_main.a \
-	$(GTEST_LIB_PATH)/libgmock.a \
+	# Link the newly compiled GTest libraries
+	$(NEW_GTEST_LIB_PATH)/libgtest_main.a \
+	$(NEW_GTEST_LIB_PATH)/libgtest.a \
 	\
-	$(GTEST_LIB_PATH)/libgtest_main.a \
-	$(GTEST_LIB_PATH)/libgtest.a \
+	# Link the system-installed GMock libraries (which are necessary)
+	-lgmock -lgmock_main \
 	\
 	-lstdc++ -lpthread
 
