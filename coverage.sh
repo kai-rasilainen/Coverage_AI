@@ -54,11 +54,7 @@ lcov --gcov-tool "$GCOV_TOOL" \
 echo "--- 4. Filtering out system headers ---"
 
 # Only remove system includes; the source files (tests, gtest) were excluded in step 3.
-lcov --gcov-tool "$GCOV_TOOL" \
---remove "$COVERAGE_INFO.tmp" \
-'*/usr/include/*' \
---output-file "$COVERAGE_INFO" \
---ignore-errors unused,empty 2> /dev/null
+lcov --gcov-tool "$GCOV_TOOL" --capture --directory "." --output-file "$COVERAGE_INFO.tmp" --base-directory "." --no-checksum --rc "lcov_branch_coverage=1" --ignore-errors mismatch,empty 2> /dev/null
 
 # Clean up temporary file
 rm "$COVERAGE_INFO.tmp"
@@ -67,12 +63,7 @@ echo "--- 5. Generating HTML Report in $REPORT_DIR ---"
 
 # Note: genhtml is not silenced as its output often confirms success.
 rm -rf "$REPORT_DIR"
-genhtml "$COVERAGE_INFO" \
---output-directory "$REPORT_DIR" \
---demangle-cpp \
---legend \
---title "Code Coverage Report" \
---ignore-errors source
+genhtml "$COVERAGE_INFO" --output-directory "$REPORT_DIR" --demangle-cpp --legend --title "Code Coverage Report" --ignore-errors source
 
 echo "--- Done ---"
 echo "Coverage report is ready. Open $REPORT_DIR/index.html in your browser."
