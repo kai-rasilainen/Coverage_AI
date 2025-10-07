@@ -34,12 +34,17 @@ $(TARGET): $(SRC)
 GTEST_LIB_PATH = /usr/src/googletest/googletest/build/lib
 
 $(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
-	# Link directly to the newly compiled static libraries in the GTest build directory
+	# Link order: Source -> GMock -> GTest -> Standard Libs
 	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
 	-o $@ $(TEST_SRC) \
 	-I/usr/src/googletest/googletest/include \
+	\
+	$(GTEST_LIB_PATH)/libgmock_main.a \
+	$(GTEST_LIB_PATH)/libgmock.a \
+	\
 	$(GTEST_LIB_PATH)/libgtest_main.a \
 	$(GTEST_LIB_PATH)/libgtest.a \
+	\
 	-lstdc++ -lpthread
 
 # Clean up
