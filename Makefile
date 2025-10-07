@@ -30,24 +30,11 @@ $(TARGET): $(SRC)
 # ---------------------------------
 # CORRECTED: Build the test executable rule (REMOVED -lpthread)
 # ---------------------------------
-# This is where your successful 'ls' showed the files are located.
-# Define the path to the newly COMPILED LIBRARIES
-NEW_GTEST_LIB_PATH = /usr/src/googletest/googletest/build/lib
-
+# Use standard -l flags now that the libraries are in the system path:
 $(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
-	# Correct Order: Source -> GTest -> GMock -> Standard Libs
 	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
 	-o $@ $(TEST_SRC) \
-	-I/usr/src/googletest/googletest/include \
-	\
-	# 1. Link GTest core libraries first
-	$(NEW_GTEST_LIB_PATH)/libgtest_main.a \
-	$(NEW_GTEST_LIB_PATH)/libgtest.a \
-	\
-	# 2. Link GMock libraries next (they depend on GTest)
-	-lgmock_main -lgmock \
-	\
-	-lstdc++ -lpthread
+	-lgtest -lgtest_main -lstdc++ -lpthread
 
 # Clean up
 clean:
