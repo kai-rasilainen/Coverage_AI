@@ -30,11 +30,17 @@ $(TARGET): $(SRC)
 # ---------------------------------
 # CORRECTED: Build the test executable rule (REMOVED -lpthread)
 # ---------------------------------
+# Define the path to the NEWLY COMPILED LIBRARIES
+GTEST_LIB_PATH = /usr/src/googletest/googletest/build/lib
+
 $(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
-	# Correct Order: Source Files -> GTest Libraries -> Std C++ Library -> Thread Library
+	# Link directly to the newly compiled static libraries in the GTest build directory
 	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
-	-o build/test_number_to_string tests/test_number_to_string.cpp tests/ai_generated_tests.cpp src/number_to_string.cpp \
-	-lgtest -lgtest_main -lstdc++ -lpthread
+	-o $@ $(TEST_SRC) \
+	-I/usr/src/googletest/googletest/include \
+	$(GTEST_LIB_PATH)/libgtest_main.a \
+	$(GTEST_LIB_PATH)/libgtest.a \
+	-lstdc++ -lpthread
 
 # Clean up
 clean:
