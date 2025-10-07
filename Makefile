@@ -1,9 +1,9 @@
 # Compiler and flags
-CXX = g++-12
+CXX = g++
 GCOV_FLAGS = --coverage
-CXXFLAGS = -std=c++17 -Wall -Wextra -I./src
+CXXFLAGS = -std=c++20 -Wall -Wextra -I./src
 # New value (with ABI fix):
-CXXFLAGS_GTEST = -std=c++17 -Wall -Wextra -I./src -I/usr/include/gtest -D_GLIBCXX_USE_CXX11_ABI=0 -fprofile-dir=$(BUILD_DIR)
+CXXFLAGS_GTEST = -std=c++20 -Wall -Wextra -I./src -I/usr/include/gtest -D_GLIBCXX_USE_CXX11_ABI=0 -fprofile-dir=$(BUILD_DIR)
 GTEST = /usr/local/lib/libgtest_main.a /usr/local/lib/libgtest.a
 SRC = src/main.cpp src/number_to_string.cpp
 TEST_SRC = tests/test_number_to_string.cpp tests/ai_generated_tests.cpp src/number_to_string.cpp
