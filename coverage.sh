@@ -39,13 +39,14 @@ fi
 
 echo "--- 3. Capturing coverage data for source files only ---"
 
-# We use '*/src/*' to include only files within the source directory.
+# Example LCOV command to fix pathing:
 lcov --gcov-tool "$GCOV_TOOL" \
 --capture \
---directory "build" \
---include '*/src/*' \
+--directory "." \
 --output-file "$COVERAGE_INFO.tmp" \
 --base-directory "." \
+--no-checksum \
+--rc lcov_branch_coverage=1 \
 --ignore-errors mismatch,empty 2> /dev/null
 
 echo "--- 4. Filtering out system headers ---"
