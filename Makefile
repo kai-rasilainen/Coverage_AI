@@ -30,26 +30,18 @@ $(TARGET): $(SRC)
 # ---------------------------------
 # CORRECTED: Build the test executable rule (REMOVED -lpthread)
 # ---------------------------------
-# Assuming the GTest source is at /usr/src/googletest/googletest
-# The libraries are in /usr/src/googletest/googletest/build/lib/
-GTEST_BUILD_LIB = /usr/src/googletest/googletest/build/lib
+# This is how the command MUST appear when executing it from your Jenkinsfile sh step:
 
-$(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
-	# Link Order: Source Files -> GMock (dependencies) -> GTest -> Standard Libs
+sh """
 	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
-	-o $@ $(TEST_SRC) \
+	-o build/test_number_to_string tests/test_number_to_string.cpp tests/ai_generated_tests.cpp src/number_to_string.cpp \
 	-I/usr/src/googletest/googletest/include \
-	\
-	# 1. GMOCK LIBRARIES (Needed for PrintTo/EqFailure symbols)
-	$(GTEST_BUILD_LIB)/libgmock_main.a \
-	$(GTEST_BUILD_LIB)/libgmock.a \
-	\
-	# 2. GTEST LIBRARIES (Core testing framework)
-	$(GTEST_BUILD_LIB)/libgtest_main.a \
-	$(GTEST_LIB_PATH)/libgtest.a \
-	\
-	# 3. Low-Level Dependencies
+	/usr/src/googletest/googletest/build/lib/libgmock_main.a \
+	/usr/src/googletest/googletest/build/lib/libgmock.a \
+	/usr/src/googletest/googletest/build/lib/libgtest_main.a \
+	/usr/src/googletest/googletest/build/lib/libgtest.a \
 	-lstdc++ -lpthread
+"""
 
 # Clean up
 clean:
