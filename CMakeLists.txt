@@ -8,7 +8,6 @@ project(Coverage_AI CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 # 1. Find the required Google Test package
-# --- Begin Replacement for find_package(GTest) ---
 include(FetchContent)
 
 # Define where to fetch GTest source (use a known stable release)
@@ -20,9 +19,6 @@ FetchContent_Declare(
 
 # Fetch and populate GTest source code
 FetchContent_MakeAvailable(googletest)
-
-# --- End Replacement ---
-
 
 # NOTE: The targets change from 'GTest::gtest_main' to 'gtest_main'
 # The dependency on gmock is often implicit when building the combined source.
@@ -40,11 +36,6 @@ add_executable(
 
 # 4. Link the target to the GTest libraries
 # Link libraries now uses the targets created by FetchContent
-set_target_properties(test_number_to_string PROPERTIES
-    # Instructs gcov to use the full path to the source files, resolving path issues
-    COMPILE_FLAGS "-fprofile-abs-path"
-)
-
 target_link_libraries(
     test_number_to_string
     gtest_main
