@@ -8,8 +8,24 @@ project(Coverage_AI CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 # 1. Find the required Google Test package
-# This step automatically handles include paths and linking flags.
-find_package(GTest REQUIRED)
+# --- Begin Replacement for find_package(GTest) ---
+include(FetchContent)
+
+# Define where to fetch GTest source (use a known stable release)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG release-1.14.0 # A stable, recent release
+)
+
+# Fetch and populate GTest source code
+FetchContent_MakeAvailable(googletest)
+
+# --- End Replacement ---
+
+
+# NOTE: The targets change from 'GTest::gtest_main' to 'gtest_main'
+# The dependency on gmock is often implicit when building the combined source.
 
 # 2. Define the source directory and include files
 include_directories(src)
@@ -23,10 +39,10 @@ add_executable(
 )
 
 # 4. Link the target to the GTest libraries
-# Use the automatically imported targets from find_package(GTest)
+# Link libraries now uses the targets created by FetchContent
 target_link_libraries(
     test_number_to_string
-    GTest::gtest_main
+    gtest_main
 )
 
 # 5. Enable coverage (instead of GCOV_FLAGS = --coverage)
