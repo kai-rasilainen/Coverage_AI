@@ -26,6 +26,12 @@ FetchContent_MakeAvailable(googletest)
 # 2. Define the source directory and include files
 include_directories(src)
 
+set_target_properties(test_number_to_string PROPERTIES
+    # Instructs gcov to generate paths relative to the source file location.
+    # This is the most reliable way to fix LCOV path mapping in CMake projects.
+    COMPILE_FLAGS "-fprofile-dir=."
+)
+
 # 3. Define the test executable target
 add_executable(
     test_number_to_string

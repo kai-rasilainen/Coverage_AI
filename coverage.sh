@@ -39,8 +39,8 @@ fi
 
 echo "--- 3. Capturing coverage data for source files only ---"
 
-# Use the --rc lcov_base_dir setting to force LCOV to strip the absolute path prefix,
-# which resolves the mismatch when absolute paths are used in compilation.
+# We revert to the simple capture command, relying on the -fprofile-dir=. flag 
+# (from CMake) to fix pathing internally.
 lcov --gcov-tool "$GCOV_TOOL" \
 --capture \
 --directory "." \
