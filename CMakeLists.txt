@@ -26,11 +26,6 @@ FetchContent_MakeAvailable(googletest)
 # 2. Define the source directory and include files
 include_directories(src)
 
-set_target_properties(test_number_to_string PROPERTIES
-    # Instructs gcov to generate paths relative to the source file location.
-    # This is the most reliable way to fix LCOV path mapping in CMake projects.
-    COMPILE_FLAGS "-fprofile-dir=."
-)
 
 # 3. Define the test executable target
 add_executable(
@@ -38,6 +33,12 @@ add_executable(
     src/number_to_string.cpp
     tests/test_number_to_string.cpp
     tests/ai_generated_tests.cpp
+)
+
+set_target_properties(test_number_to_string PROPERTIES
+    # Instructs gcov to generate paths relative to the source file location.
+    # This is the most reliable way to fix LCOV path mapping in CMake projects.
+    COMPILE_FLAGS "-fprofile-dir=."
 )
 
 # 4. Link the target to the GTest libraries
