@@ -46,8 +46,10 @@ lcov --gcov-tool "$GCOV_TOOL" \
 --directory "." \
 --output-file "$COVERAGE_INFO.tmp" \
 --base-directory "." \
---include '*/src/*' \
+--no-checksum \
+--rc "lcov_branch_coverage=1" \
 --rc "lcov_base_dir=${PWD}" \
+--rc "lcov_absolute_path=1" \
 --ignore-errors mismatch,empty 2> /dev/null
 
 echo "--- 4. Filtering out system headers ---"
