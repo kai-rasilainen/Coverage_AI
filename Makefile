@@ -31,9 +31,10 @@ $(TARGET): $(SRC)
 # CORRECTED: Build the test executable rule (REMOVED -lpthread)
 # ---------------------------------
 $(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
+	# Correct Order: Source Files -> GTest Libraries -> Std C++ Library -> Thread Library
 	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
 	-o build/test_number_to_string tests/test_number_to_string.cpp tests/ai_generated_tests.cpp src/number_to_string.cpp \
-	-lgtest -lgtest_main -lpthread -lstdc++
+	-lgtest -lgtest_main -lstdc++ -lpthread
 
 # Clean up
 clean:
