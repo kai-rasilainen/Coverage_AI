@@ -107,19 +107,25 @@ stages {
                     echo "Writing requirements file..."
                     
                     // ✅ CORRECTED SH CALL: Uses the required --prompt-file flag.
-                    // Structure: python3 <flag> <prompt_path> <context_file> <output_file>
                     sh """
-                    # We no longer need to run the full activation script.
                     # Simply call the python executable directly from the venv/bin folder.
                     ./venv/bin/python3 ai_generate_promt.py --prompt-file '${requirementsPromptFile}' '.' '${REQUIREMENTS_FILE}'
                     """
                 }
                 
-                // --- INITIAL BUILD STEP ---
-                // Ensure the test executable is built before running the coverage script.
-                echo "Building test executable for the first time..."
-                sh 'set +x; make clean'
-                sh 'set +x; make build/test_number_to_string'
+                // -----------------------------------------------------------
+                // --- INITIAL BUILD STEP (Updated for CMake) ---
+                // -----------------------------------------------------------
+                echo "Configuring and building test executable for the first time using CMake..."
+                
+                // 1. Configure the project and generate the Makefile in the 'build' directory
+                sh 'cmake -B build' 
+
+                // 2. Build the test executable using the target name defined in CMakeLists.txt
+                // Assuming the target name is 'test_number_to_string'
+                sh 'cmake --build build --target test_number_to_string'
+                // -----------------------------------------------------------
+
 
                 while (iteration < maxIterations) {
                     def testFile = "tests/ai_generated_tests.cpp"
@@ -192,7 +198,6 @@ stages {
                         // 2. Call the Python script with all required arguments.
                         // Structure: --prompt-file <path> <context_file> <output_file>
                         sh """
-                        # We no longer need to run the full activation script.
                         # Simply call the python executable directly from the venv/bin folder.
                         ./venv/bin/python3 ai_generate_promt.py --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}'
                         """
@@ -231,7 +236,8 @@ stages {
 
                     // Rebuild tests for next iteration (DO NOT RUN HERE)
                     echo "Rebuilding test executable..."
-                    sh 'set +x; make build/test_number_to_string'
+                    sh 'cmake --build build --target test_number_to_string'
+                    // ----------------------------------------------------
 
                     iteration++
                 }
@@ -243,7 +249,8 @@ stages {
 post {
     always {
         echo "This will always run, regardless of the build status."
-        sh 'set +x; make clean'
+        // Clean up by removing the CMake-generated build directory
+        sh 'rm -rf build'
     }
 }
 }
