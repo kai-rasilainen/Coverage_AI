@@ -35,21 +35,21 @@ $(TARGET): $(SRC)
 GTEST_BUILD_LIB = /usr/src/googletest/googletest/build/lib
 
 $(TEST_BINARY): $(BUILD_DIR) $(TEST_SRC)
-    # Link Order: Source Files -> GMock (dependencies) -> GTest -> Standard Libs
-    $(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
-    -o $@ $(TEST_SRC) \
-    -I/usr/src/googletest/googletest/include \
-    \
-    # 1. GMOCK LIBRARIES (Needed for PrintTo/EqFailure symbols)
-    $(GTEST_BUILD_LIB)/libgmock_main.a \
-    $(GTEST_BUILD_LIB)/libgmock.a \
-    \
-    # 2. GTEST LIBRARIES (Core testing framework)
-    $(GTEST_BUILD_LIB)/libgtest_main.a \
-    $(GTEST_LIB_PATH)/libgtest.a \
-    \
-    # 3. Low-Level Dependencies
-    -lstdc++ -lpthread
+	# Link Order: Source Files -> GMock (dependencies) -> GTest -> Standard Libs
+	$(CXX) $(CXXFLAGS_GTEST) $(GCOV_FLAGS) \
+	-o $@ $(TEST_SRC) \
+	-I/usr/src/googletest/googletest/include \
+	\
+	# 1. GMOCK LIBRARIES (Needed for PrintTo/EqFailure symbols)
+	$(GTEST_BUILD_LIB)/libgmock_main.a \
+	$(GTEST_BUILD_LIB)/libgmock.a \
+	\
+	# 2. GTEST LIBRARIES (Core testing framework)
+	$(GTEST_BUILD_LIB)/libgtest_main.a \
+	$(GTEST_LIB_PATH)/libgtest.a \
+	\
+	# 3. Low-Level Dependencies
+	-lstdc++ -lpthread
 
 # Clean up
 clean:
