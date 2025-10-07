@@ -14,7 +14,7 @@ SOURCE_DIR="src"
 # Check if the correct gcov tool exists
 if [ ! -f "$GCOV_TOOL" ]; then
 echo "ERROR: Required gcov tool '$GCOV_TOOL' not found."
-echo "Ensure that the 'gcov-11' package is installed (e.g., sudo apt install gcov-11)."
+echo "Ensure that the 'gcov-13' package is installed (e.g., sudo apt install gcov-13)."
 exit 1
 fi
 
