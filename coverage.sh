@@ -39,14 +39,15 @@ fi
 
 echo "--- 3. Capturing coverage data for source files only ---"
 
-# Example LCOV command to fix pathing:
+# Use the --rc lcov_base_dir setting to force LCOV to strip the absolute path prefix,
+# which resolves the mismatch when absolute paths are used in compilation.
 lcov --gcov-tool "$GCOV_TOOL" \
 --capture \
 --directory "." \
 --output-file "$COVERAGE_INFO.tmp" \
 --base-directory "." \
---no-checksum \
---rc lcov_branch_coverage=1 \
+--include '*/src/*' \
+--rc "lcov_base_dir=${PWD}" \
 --ignore-errors mismatch,empty 2> /dev/null
 
 echo "--- 4. Filtering out system headers ---"

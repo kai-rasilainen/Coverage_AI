@@ -40,6 +40,11 @@ add_executable(
 
 # 4. Link the target to the GTest libraries
 # Link libraries now uses the targets created by FetchContent
+set_target_properties(test_number_to_string PROPERTIES
+    # Instructs gcov to use the full path to the source files, resolving path issues
+    COMPILE_FLAGS "-fprofile-abs-path"
+)
+
 target_link_libraries(
     test_number_to_string
     gtest_main
