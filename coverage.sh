@@ -1,26 +1,28 @@
 #!/bin/bash
 
 # --- Configuration ---
-# Match your g++ version (v13.3.0 requires gcov-13)
-GCOV_TOOL="/usr/bin/gcov-13" 
+# Use the generic 'gcov' executable, relying on the system's PATH.
+GCOV_TOOL="gcov" 
 BUILD_DIR=build
 TEST_EXEC="${BUILD_DIR}/test_number_to_string"
 REPORT_DIR=coverage_report
 COVERAGE_INFO="${BUILD_DIR}/coverage.info"
 TEMP_COVERAGE_INFO="${BUILD_DIR}/coverage.info.tmp"
 
-# Check if the correct gcov tool exists
-if [ ! -f "$GCOV_TOOL" ]; then
-echo "ERROR: Required gcov tool '$GCOV_TOOL' not found. Ensure gcov-13 is installed."
-exit 1
-fi
+# Source directories to include in the report (adjust as needed)
+SOURCE_DIR="src"
+
+# --- REMOVED: Explicit file check for /usr/bin/gcov-13 ---
+# The shell will now rely on PATH lookup for 'gcov'.
 
 echo "--- 1. Cleaning up old data and running all tests ---"
 
 # Remove previous run-time coverage data (.gcda files)
 find . -name '*.gcda' -exec rm {} \;
 
-# Run ALL tests to generate maximum coverage data (.gcda files)
+echo "--- 2. Running Unit Tests ---"
+
+# Execute the test executable to generate .gcda files
 if [ -x "$TEST_EXEC" ]; then
     echo "Running full test suite: ${TEST_EXEC}"
     "$TEST_EXEC"
@@ -33,9 +35,9 @@ else
     exit 1
 fi
 
-echo "--- 2. Capturing cumulative coverage data ---"
+echo "--- 3. Capturing cumulative coverage data ---"
 
-# Capture cumulative coverage data from the entire workspace
+# NOTE: The --gcov-tool flag now uses the generic 'gcov' command.
 lcov --gcov-tool "$GCOV_TOOL" \
     --capture \
     --directory "." \
@@ -45,6 +47,8 @@ lcov --gcov-tool "$GCOV_TOOL" \
     --rc geninfo_unexecuted_blocks=1 \
     --ignore-errors mismatch,empty \
     --no-checksum 2> /dev/null
+
+# ... (Rest of the script remains the same) ...
 
 echo "--- 3. Filtering and saving final tracefile for AI analysis ---"
 
@@ -75,6 +79,3 @@ genhtml "$COVERAGE_INFO" \
 
 echo "--- Done ---"
 echo "Summary coverage report generated in $REPORT_DIR/index.html"
-
-# Note: The test_list logic and the for loop were removed as they conflict with 
-# the pipeline's requirement for a single cumulative report.
