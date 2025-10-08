@@ -1,69 +1,21 @@
 #!/bin/bash
 
-# --- Configuration ---
-# Set the GCOV_TOOL to match the compiler version (g++-11 in your case)
-GCOV_TOOL="/usr/bin/gcov-13"
-BUILD_DIR="build"
-TEST_EXEC="${BUILD_DIR}/test_number_to_string"
-REPORT_DIR="coverage_report"
-COVERAGE_INFO="${BUILD_DIR}/coverage.info"
+make tests
+test_list=$(build/test_number_to_string --gtest_list_tests | awk '/^[^ ]/ {suite=$1} /^[ ]/ {print suite $1}')
 
-# Source directories to include in the report (adjust as needed)
-SOURCE_DIR="src"
+BUILD_DIR=build
+REPORT_DIR=reports
 
-# Check if the correct gcov tool exists
-if [ ! -f "$GCOV_TOOL" ]; then
-echo "ERROR: Required gcov tool '$GCOV_TOOL' not found."
-echo "Ensure that the 'gcov-13' package is installed (e.g., sudo apt install gcov-13)."
-exit 1
-fi
+for test_case_name in $test_list; do
+    COVERAGE_DIR=${REPORT_DIR}/coverage_report_${test_case_name}
+    COVERAGE_INFO=${COVERAGE_DIR}/coverage.info
+    rm -fr ${COVERAGE_DIR} ; mkdir -p ${COVERAGE_DIR}
+    echo "Running test: ${test_case_name} coverage to ${COVERAGE_DIR}"
 
-echo "--- 1. Cleaning up previous coverage data (.gcda files) ---"
-
-# Remove previous run-time coverage data (.gcda files)
-find . -name '*.gcda' -exec rm {} \;
-
-echo "--- 2. Running Unit Tests ---"
-
-# Execute the test executable to generate .gcda files
-if [ -x "$TEST_EXEC" ]; then
-"$TEST_EXEC"
-TEST_RESULT=$?
-if [ $TEST_RESULT -ne 0 ]; then
-echo "WARNING: Tests failed with exit code $TEST_RESULT. Proceeding with coverage capture."
-fi
-else
-echo "ERROR: Test executable '$TEST_EXEC' not found or not executable. Did the compilation step fail?"
-exit 1
-fi
-
-echo "--- 3. Capturing coverage data for source files only ---"
-
-# We revert to the simple capture command, relying on the -fprofile-dir=. flag 
-# (from CMake) to fix pathing internally.
-lcov --gcov-tool "$GCOV_TOOL" \
---capture \
---directory "." \
---output-file "$COVERAGE_INFO.tmp" \
---base-directory "." \
---no-checksum \
---rc "lcov_branch_coverage=1" \
---include '*/src/*' \
---ignore-errors mismatch,empty 2> /dev/null
-
-echo "--- 4. Filtering out system headers ---"
-
-# Only remove system includes; the source files (tests, gtest) were excluded in step 3.
-lcov --gcov-tool "$GCOV_TOOL" --capture --directory "." --output-file "$COVERAGE_INFO.tmp" --base-directory "." --no-checksum --rc "lcov_branch_coverage=1" --ignore-errors mismatch,empty 2> /dev/null
-
-# Clean up temporary file
-rm "$COVERAGE_INFO.tmp"
-
-echo "--- 5. Generating HTML Report in $REPORT_DIR ---"
-
-# Note: genhtml is not silenced as its output often confirms success.
-rm -rf "$REPORT_DIR"
-genhtml "$COVERAGE_INFO" --output-directory "$REPORT_DIR" --demangle-cpp --legend --title "Code Coverage Report" --ignore-errors source
-
-echo "--- Done ---"
-echo "Coverage report is ready. Open $REPORT_DIR/index.html in your browser."
+    lcov --directory build --zerocounters > /dev/null
+    build/test_number_to_string --gtest_filter="${test_case_name}" || echo "Test ${test_case_name failed}"
+    lcov --capture --directory ${BUILD_DIR} --output-file ${COVERAGE_INFO} --ignore-errors mismatch > /dev/null
+    lcov --ignore-errors unused,unused --ignore-errors empty --remove ${COVERAGE_INFO} '/usr/*' '*/tests/*' --output-file ${COVERAGE_INFO} > /dev/null
+    genhtml ${COVERAGE_INFO} --output-directory ${COVERAGE_DIR} > /dev/null
+    echo "Coverage report generated in ${COVERAGE_DIR}/index.html"
+done

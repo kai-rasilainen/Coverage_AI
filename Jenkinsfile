@@ -114,18 +114,17 @@ stages {
                 }
                 
                 // -----------------------------------------------------------
-                // --- INITIAL BUILD STEP (Updated for CMake) ---
+                // --- INITIAL BUILD STEP (Updated for Makefile) ---
                 // -----------------------------------------------------------
-                echo "Configuring and building test executable for the first time using CMake..."
-                
-                // 1. Configure the project and generate the Makefile in the 'build' directory
-                sh 'cmake -B build' 
+                echo "Building test executable for the first time..."
 
-                // 2. Build the test executable using the target name defined in CMakeLists.txt
-                // Assuming the target name is 'test_number_to_string'
-                sh 'cmake --build build --target test_number_to_string'
+                // 1. Ensure the build directory exists
+                sh 'mkdir -p build' 
+
+                // 2. Build the test executable using the TEST_BINARY target.
+                // This command will automatically run the dependencies in your Makefile.
+                sh 'make build/test_number_to_string'
                 // -----------------------------------------------------------
-
 
                 while (iteration < maxIterations) {
                     def testFile = "tests/ai_generated_tests.cpp"
@@ -236,7 +235,8 @@ stages {
 
                     // Rebuild tests for next iteration (DO NOT RUN HERE)
                     echo "Rebuilding test executable..."
-                    sh 'cmake --build build --target test_number_to_string'
+                    // Only run the target build command.
+                    sh 'make build/test_number_to_string'
                     // ----------------------------------------------------
 
                     iteration++
@@ -249,8 +249,8 @@ stages {
 post {
     always {
         echo "This will always run, regardless of the build status."
-        // Clean up by removing the CMake-generated build directory
-        sh 'rm -rf build'
+        // Clean up using the Makefile's defined target
+        sh 'make clean' 
     }
 }
 }
