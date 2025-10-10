@@ -30,10 +30,10 @@ DO NOT include any headers (like iostream or gtest).
 DO NOT include explanations, comments, or markdown wrappers.
 Only output the raw C++ code for the test function.""",
 description: 'The coverage prompt to pass to the script.')
-    number(
+    string(
         // ADDED: New parameter for minimum coverage
         name: 'min_coverage_target',
-        defaultValue: 90.0,
+        defaultValue: '90.0',
         description: 'The minimum code coverage percentage required to stop iteration.')
 }
 
@@ -177,8 +177,9 @@ stages {
 
                     echo "Current coverage: ${String.format('%.2f', coverage)}%"
 
-                    if (coverage >= 100.0) {
-                        echo "Coverage is 100%. Stopping iteration."
+                    if (coverage >= params.min_coverage_target.toFloat()) {
+                        echo "Coverage is ${String.format('%.2f', coverage)}% which meets the target of \
+                        ${params.min_coverage_target}%. Stopping iteration."
                         break
                     }
 
