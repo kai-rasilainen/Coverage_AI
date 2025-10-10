@@ -48,19 +48,13 @@ stages {
 
                 // --- NEW STEP: VENV SETUP AND DEPENDENCY INSTALLATION ---
                 echo "Setting up Python virtual environment and installing dependencies..."
-                // Ensure you have python3 and venv module installed on the agent 
-                system!
+                // Ensure you have python3 and venv module installed on the agent system!
                 sh '''
                     # 1. Create the virtual environment in the workspace
                     python3 -m venv venv || python -m venv venv
                     
-       
-             # 2. Activate the VENV and install required packages
-                    // REMOVED: . venv/bin/activate
-                    
                     # MODIFIED: Install requests using the VENV's specific pip executable (Fixes 'externally-managed-environment')
-               ./venv/bin/pip install requests
-                    // REMOVED: .venv/bin/deactivate is not needed if 'activate' isn't used.
+                    ./venv/bin/pip install requests
                 '''
 
                 // Define the files used for context and requirements
