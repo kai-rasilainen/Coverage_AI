@@ -1,6 +1,15 @@
 pipeline {
 agent any
 
+// ADDED: Environment block for centralized configuration
+environment {
+    REQUIREMENTS_FILE = './requirements.md'
+    PROMPT_SCRIPT = 'ai_generate_promt.py'
+    COVERAGE_SCRIPT = './coverage.sh'
+    COVERAGE_INFO_FILE = 'build/coverage.info'
+    COVERAGE_REPORT_HTML = 'coverage_report/index.html'
+}
+
 // Define the parameter to be passed to the script
 parameters {
     string(
@@ -21,6 +30,11 @@ DO NOT include any headers (like iostream or gtest).
 DO NOT include explanations, comments, or markdown wrappers.
 Only output the raw C++ code for the test function.""",
 description: 'The coverage prompt to pass to the script.')
+    number(
+        // ADDED: New parameter for minimum coverage
+        name: 'min_coverage_target',
+        defaultValue: 90.0,
+        description: 'The minimum code coverage percentage required to stop iteration.')
 }
 
 // The 'stages' block contains the logical divisions of your build process.
@@ -49,9 +63,6 @@ stages {
                     # Deactivate the environment after setup
                     deactivate
                 '''
-
-                // Define the files used for context and requirements
-                def REQUIREMENTS_FILE = './requirements.md'
                 
                 // --- DYNAMIC FILE DISCOVERY (FIXED GLOB PATTERN) ---
                 // Dynamically find all relevant source files in the 'src' directory, recursively.
@@ -79,8 +90,8 @@ stages {
                 // --- WRITE REQUIREMENTS FILE ---
                 
                 // Create an empty requirements file if it doesn't exist.
-                if (!fileExists(REQUIREMENTS_FILE)) {
-                    writeFile file: REQUIREMENTS_FILE, text: ''
+                if (!fileExists(env.REQUIREMENTS_FILE)) {
+                    writeFile file: env.REQUIREMENTS_FILE, text: ''
                 }
                 
                 // Read and concatenate the content of all context files.
@@ -109,7 +120,7 @@ stages {
                     // ✅ CORRECTED SH CALL: Uses the required --prompt-file flag.
                     sh """
                     # Simply call the python executable directly from the venv/bin folder.
-                    ./venv/bin/python3 ai_generate_promt.py --prompt-file '${requirementsPromptFile}' '.' '${REQUIREMENTS_FILE}'
+                    ./venv/bin/python3 ai_generate_promt.py --prompt-file '${requirementsPromptFile}' '.' '${env.REQUIREMENTS_FILE}'
                     """
                 }
                 
@@ -173,7 +184,7 @@ stages {
 
                     // --- 2. Read Context and Requirements ---
 
-                    def reqSpecContent = readFile(file: REQUIREMENTS_FILE, encoding: 'UTF-8')
+                    def reqSpecContent = readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8')
                     def coverageReportContent = readFile(file: "coverage_report/index.html", encoding: 'UTF-8')
 
                      // --- 3. Assemble Final Prompt ---
