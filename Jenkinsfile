@@ -31,9 +31,9 @@ DO NOT include explanations, comments, or markdown wrappers.
 Only output the raw C++ code for the test function.""",
 description: 'The coverage prompt to pass to the script.')
     string(
-        // ADDED: New parameter for minimum coverage
+        // RETAINED: Use 'string' and not 'number' due to Jenkins compatibility issues.
         name: 'min_coverage_target',
-        defaultValue: '90.0',
+        defaultValue: '100.0', // MODIFIED: Changed default to '100.0' and is quoted as a string.
         description: 'The minimum code coverage percentage required to stop iteration.')
 }
 
@@ -48,21 +48,23 @@ stages {
 
                 // --- NEW STEP: VENV SETUP AND DEPENDENCY INSTALLATION ---
                 echo "Setting up Python virtual environment and installing dependencies..."
-                // Ensure you have python3 and venv module installed on the agent system!
+                // Ensure you have python3 and venv module installed on the agent 
+                system!
                 sh '''
                     # 1. Create the virtual environment in the workspace
                     python3 -m venv venv || python -m venv venv
                     
-                    # 2. Activate the VENV and install required packages
-                    . venv/bin/activate
+       
+             # 2. Activate the VENV and install required packages
+                    // REMOVED: . venv/bin/activate
                     
-                    # Install requests (and any other package, like the Google GenAI SDK if needed)
-                    pip install requests
-                    # pip install google-genai
-                    
-                    # Deactivate the environment after setup
-                    deactivate
+                    # MODIFIED: Install requests using the VENV's specific pip executable (Fixes 'externally-managed-environment')
+               ./venv/bin/pip install requests
+                    // REMOVED: .venv/bin/deactivate is not needed if 'activate' isn't used.
                 '''
+
+                // Define the files used for context and requirements
+                // REMOVED: def REQUIREMENTS_FILE = './requirements.md' // Now using env.REQUIREMENTS_FILE
                 
                 // --- DYNAMIC FILE DISCOVERY (FIXED GLOB PATTERN) ---
                 // Dynamically find all relevant source files in the 'src' directory, recursively.
@@ -90,8 +92,8 @@ stages {
                 // --- WRITE REQUIREMENTS FILE ---
                 
                 // Create an empty requirements file if it doesn't exist.
-                if (!fileExists(env.REQUIREMENTS_FILE)) {
-                    writeFile file: env.REQUIREMENTS_FILE, text: ''
+                if (!fileExists(env.REQUIREMENTS_FILE)) { // MODIFIED: Use env.REQUIREMENTS_FILE
+                    writeFile file: env.REQUIREMENTS_FILE, text: '' // MODIFIED: Use env.REQUIREMENTS_FILE
                 }
                 
                 // Read and concatenate the content of all context files.
@@ -120,7 +122,7 @@ stages {
                     // ✅ CORRECTED SH CALL: Uses the required --prompt-file flag.
                     sh """
                     # Simply call the python executable directly from the venv/bin folder.
-                    ./venv/bin/python3 ai_generate_promt.py --prompt-file '${requirementsPromptFile}' '.' '${env.REQUIREMENTS_FILE}'
+                    ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${requirementsPromptFile}' '.' '${env.REQUIREMENTS_FILE}' // MODIFIED: Use env.PROMPT_SCRIPT and env.REQUIREMENTS_FILE
                     """
                 }
                 
@@ -151,11 +153,11 @@ stages {
                     writeFile file: testFileSave, text: '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n'
 
                     // Run coverage script (which executes tests internally)
-                    sh './coverage.sh'
+                    sh env.COVERAGE_SCRIPT // MODIFIED: Use env.COVERAGE_SCRIPT
 
                     // --- 1. Read Coverage Data (Corrected for CPS serialization) ---
                     // The coverage.sh script places this in the 'build' directory.
-                    def coverageInfoContent = readFile(file: "build/coverage.info", encoding: 'UTF-8')
+                    def coverageInfoContent = readFile(file: env.COVERAGE_INFO_FILE, encoding: 'UTF-8') // MODIFIED: Use env.COVERAGE_INFO_FILE
                     def linesFound = 0
                     def linesHit = 0
 
@@ -177,6 +179,7 @@ stages {
 
                     echo "Current coverage: ${String.format('%.2f', coverage)}%"
 
+                    // MODIFIED: Use the string parameter converted to Float for comparison
                     if (coverage >= params.min_coverage_target.toFloat()) {
                         echo "Coverage is ${String.format('%.2f', coverage)}% which meets the target of \
                         ${params.min_coverage_target}%. Stopping iteration."
@@ -185,8 +188,8 @@ stages {
 
                     // --- 2. Read Context and Requirements ---
 
-                    def reqSpecContent = readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8')
-                    def coverageReportContent = readFile(file: "coverage_report/index.html", encoding: 'UTF-8')
+                    def reqSpecContent = readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8') // MODIFIED: Use env.REQUIREMENTS_FILE
+                    def coverageReportContent = readFile(file: env.COVERAGE_REPORT_HTML, encoding: 'UTF-8') // MODIFIED: Use env.COVERAGE_REPORT_HTML
 
                      // --- 3. Assemble Final Prompt ---
                     def prompt = """${params.prompt_coverage}
@@ -198,7 +201,7 @@ stages {
                     // --- Variable Definitions and File Setup (Defined FIRST) ---
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
                     def promptFilePath = "build/prompt_content_iter_${iteration}.txt"
-                    def contextFilePath = 'build/coverage.info' // The first positional argument
+                    def contextFilePath = env.COVERAGE_INFO_FILE // MODIFIED: Use env.COVERAGE_INFO_FILE
 
                     // 1. Write the multi-line prompt content to the temporary file (MUST BE BEFORE 'sh')
                     writeFile file: promptFilePath, text: prompt, encoding: 'UTF-8' 
@@ -210,7 +213,7 @@ stages {
                         // Structure: --prompt-file <path> <context_file> <output_file>
                         sh """
                         # Simply call the python executable directly from the venv/bin folder.
-                        ./venv/bin/python3 ai_generate_promt.py --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}'
+                        ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}' // MODIFIED: Use env.PROMPT_SCRIPT
                         """
                     }
 
