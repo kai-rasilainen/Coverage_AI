@@ -55,6 +55,7 @@ stages {
                 def iteration = 0
                 def coverage = 0.0
                 def existingTestHashes = [] // MOVED: Defined once outside the loop (Fix for Issue #2)
+                def CONTEXT_FILES = []
                 
                 // ADDED: Variables for LCOV parsing must be defined outside the loop scope (Fix for Issue #1)
                 def coverageInfoContent = '' 
@@ -75,8 +76,30 @@ stages {
                     ./venv/bin/python3 -m pip install requests
                 '''
                 
-                // ... (DYNAMIC FILE DISCOVERY and REQUIREMENTS FILE generation blocks remain the same) ...
+                // --- DYNAMIC FILE DISCOVERY (FIXED GLOB PATTERN) ---
+                // Dynamically find all relevant source files in the 'src' directory, recursively.
 
+                // Use the built-in Jenkins findFiles step, which is Groovy Sandbox approved.
+                // The 'glob' pattern searches for *.cpp files recursively within the 'src' directory.
+                def CONTEXT_FILES_LIST = findFiles(glob: 'src/**')
+                
+                // MODIFIED: 'def' is removed because CONTEXT_FILES was defined at the top of the script block
+                CONTEXT_FILES = CONTEXT_FILES_LIST.findAll { 
+                    // Check if the file name is NOT 'main.cpp'
+                    !it.name.equals('main.cpp') &&
+                    
+                    // AND check if the file path ends with .cpp
+                    it.path.endsWith('.cpp')
+                }.collect { it.path }
+                
+                // Check for empty results and fail gracefully if no files are found.
+                if (CONTEXT_FILES.isEmpty()) {
+                    // You can choose to error or warn here based on if 'src' must contain files.
+                    // Since the original code checked for existence, an error is appropriate if no files are found in 'src'.
+                    error "Error: No .cpp files found in the 'src' directory."
+                }
+
+                echo "Context files found: ${CONTEXT_FILES}"
                 // --- INITIAL BUILD STEP (Updated for Makefile) ---
                 echo "Building test executable for the first time..."
                 sh 'mkdir -p build' 
