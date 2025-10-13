@@ -103,7 +103,7 @@ stages {
                 // --- INITIAL BUILD STEP (Updated for Makefile) ---
                 echo "Building test executable for the first time..."
                 sh 'mkdir -p build' 
-                sh 'make build/test_number_to_string'
+                sh 'make all'
                 
                 // --- I.2 HASH SETUP (MOVED & CORRECTED) ---
                 def testFile = "tests/ai_generated_tests.cpp"
@@ -259,7 +259,7 @@ stages {
 
                     // Rebuild tests for next iteration
                     echo "Rebuilding test executable..."
-                    sh 'make build/test_number_to_string'
+                    sh 'make build/ai_generated_tests.o build/test_number_to_string'
 
                     iteration++
                 }
