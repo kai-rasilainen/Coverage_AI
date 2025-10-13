@@ -261,9 +261,13 @@ stages {
 
 post {
     always {
-        echo "This will always run, regardless of the build status."
-        // Clean up using the Makefile's defined target
-        sh 'make clean' 
+      
+  echo "This will always run, regardless of the build status."
+    // Clean up using the Makefile's defined target
+        // WRAP THE SH STEP IN A 'script' BLOCK TO ENSURE IT'S EXECUTED CORRECTLY
+        script {
+            sh 'make clean' 
+        }
     }
 }
 }
