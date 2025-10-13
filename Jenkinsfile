@@ -259,7 +259,7 @@ stages {
 
                     // Rebuild tests for next iteration
                     echo "Rebuilding test executable..."
-                    sh 'make build/ai_generated_tests.o build/test_number_to_string'
+                    sh 'make build/test_number_to_string'
 
                     iteration++
                 }
@@ -270,8 +270,19 @@ stages {
 
 post {
     always {
-      echo "This will always run, regardless of the build status."
-    // Clean up using the Makefile's defined target
+        echo "This will always run, regardless of the build status."
+        
+        // --- ADDED: ARTIFACT ARCHIVAL (II.2) ---
+        archiveArtifacts artifacts: """
+            ${env.REQUIREMENTS_FILE},
+            tests/ai_generated_tests.cpp,
+            ${env.COVERAGE_INFO_FILE}
+        """
+        // Archive the entire HTML report directory for easy browsing
+        archiveArtifacts artifacts: 'coverage_report/**', allowEmpty: true
+        // ----------------------------------------
+        
+        // Clean up using the Makefile's defined target
         // WRAP THE SH STEP IN A 'script' BLOCK TO ENSURE IT'S EXECUTED CORRECTLY
         script {
             sh 'make clean' 
