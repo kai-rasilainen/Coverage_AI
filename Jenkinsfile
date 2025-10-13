@@ -207,8 +207,8 @@ stages {
                         // Structure: --prompt-file <path> <context_file> <output_file>
                         sh """
                         # Simply call the python executable directly from the venv/bin folder.
-                        ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}' // MODIFIED: Use env.PROMPT_SCRIPT
-                        """
+                        ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}'
+                        """ // MODIFIED: Removed the Groovy single-line comment inside the sh block.
                     }
 
                     // --- 4. Append Generated Test Case (Corrected Cleanup) ---
