@@ -42,7 +42,8 @@ stages {
     stage('Iterative Coverage Improvement') {
         steps {
             script {
-                def sha1(String input) {
+                // MODIFIED: Converted the utility function to a Groovy Closure (function pointer)
+                def sha1 = { input ->
                     if (input == null || input.isEmpty()) return ""
                     def md = java.security.MessageDigest.getInstance("SHA-1")
                     md.update(input.getBytes("UTF-8"))
