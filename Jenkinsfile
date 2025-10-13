@@ -54,8 +54,7 @@ stages {
                     python3 -m venv venv || python -m venv venv
                     
                     # 2. MODIFIED: Ensure pip executable has permissions and install directly
-                    chmod +x ./venv/bin/pip
-                    ./venv/bin/pip install requests
+                    ./venv/bin/python3 -m pip install requests
                 '''
 
                 // Define the files used for context and requirements
