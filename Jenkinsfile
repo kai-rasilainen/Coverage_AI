@@ -106,13 +106,16 @@ stages {
                 sh 'make all'
                 
                 // --- I.2 HASH SETUP (MOVED & CORRECTED) ---
+                // This block runs ONCE after the initial build to load any existing, manually-written, or previous tests.
                 def testFile = "tests/ai_generated_tests.cpp"
                 if (fileExists(testFile)) {
                     echo "Initializing hash list from existing tests..."
                     def existingContent = readFile(file: testFile, encoding: 'UTF-8')
+                    // Split the content into test blocks
                     def testBlocks = existingContent.split(/(?=\nTEST\()/) 
                     testBlocks.each { block ->
                         if (block.trim().startsWith('TEST(')) {
+                            // The sha1 closure is used here, defined at the top of the script block.
                             existingTestHashes.add(sha1(block.trim()))
                         }
                     }
