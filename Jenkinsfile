@@ -1,7 +1,7 @@
 pipeline {
 agent any
 
-// ADDED: Environment block for centralized configuration
+// Environment variables centralize configuration paths
 environment {
     REQUIREMENTS_FILE = './requirements.md'
     PROMPT_SCRIPT = 'ai_generate_promt.py'
@@ -10,7 +10,6 @@ environment {
     COVERAGE_REPORT_HTML = 'coverage_report/index.html'
 }
 
-// Define the parameter to be passed to the script
 parameters {
     string(
         name: 'prompt_console',
@@ -31,18 +30,16 @@ DO NOT include explanations, comments, or markdown wrappers.
 Only output the raw C++ code for the test function.""",
 description: 'The coverage prompt to pass to the script.')
     string(
-        // RETAINED: Use 'string' and not 'number' due to Jenkins compatibility issues.
         name: 'min_coverage_target',
-        defaultValue: '100.0', // MODIFIED: Changed default to '100.0' and is quoted as a string.
+        defaultValue: '100.0',
         description: 'The minimum code coverage percentage required to stop iteration.')
 }
 
-// The 'stages' block contains the logical divisions of your build process.
 stages {
     stage('Iterative Coverage Improvement') {
         steps {
             script {
-                // MODIFIED: Converted the utility function to a Groovy Closure (function pointer)
+                // UTILITY CLOSURE: Hashing function for test debouncing (Requires approval)
                 def sha1 = { input ->
                     if (input == null || input.isEmpty()) return ""
                     def md = java.security.MessageDigest.getInstance("SHA-1")
@@ -50,72 +47,83 @@ stages {
                     return new BigInteger(1, md.digest()).toString(16).padLeft(40, '0')
                 }
                 
-                // --- VARIABLE INITIALIZATION (ALL VARIABLES DEFINED HERE) ---
+                // --- VARIABLE INITIALIZATION ---
                 def maxIterations = 3
                 def iteration = 0
                 def coverage = 0.0
-                def existingTestHashes = [] // MOVED: Defined once outside the loop (Fix for Issue #2)
-                def CONTEXT_FILES = []
+                def existingTestHashes = [] 
+                def CONTEXT_FILES = [] // All C++ files found in src/
                 
-                // ADDED: Variables for LCOV parsing must be defined outside the loop scope (Fix for Issue #1)
+                // Variables used by the LCOV parsing logic
                 def coverageInfoContent = '' 
                 def linesFound = 0
                 def linesHit = 0
                 def missList = []
                 def currentFile = null
-                // -----------------------------------------------------------
-
-                // --- NEW STEP: VENV SETUP AND DEPENDENCY INSTALLATION ---
+                
+                // --- VENV SETUP AND DEPENDENCY INSTALLATION ---
                 echo "Setting up Python virtual environment and installing dependencies..."
-                // Ensure you have python3 and venv module installed on the agent system!
                 sh '''
                     # 1. Create the virtual environment in the workspace
                     python3 -m venv venv || python -m venv venv
                     
-                    # 2. MODIFIED: Ensure pip executable has permissions and install directly
+                    # 2. Install requests using the venv's python interpreter (Fixes permissions/scoping)
                     ./venv/bin/python3 -m pip install requests
                 '''
                 
-                // --- DYNAMIC FILE DISCOVERY (FIXED GLOB PATTERN) ---
-                // Dynamically find all relevant source files in the 'src' directory, recursively.
+                // --- DYNAMIC FILE DISCOVERY AND CONTEXT AGGREGATION ---
+                echo "Discovering context files and aggregating source code..."
 
-                // Use the built-in Jenkins findFiles step, which is Groovy Sandbox approved.
-                // The 'glob' pattern searches for *.cpp files recursively within the 'src' directory.
                 def CONTEXT_FILES_LIST = findFiles(glob: 'src/**')
-                
-                // MODIFIED: 'def' is removed because CONTEXT_FILES was defined at the top of the script block
                 CONTEXT_FILES = CONTEXT_FILES_LIST.findAll { 
-                    // Check if the file name is NOT 'main.cpp'
-                    !it.name.equals('main.cpp') &&
-                    
-                    // AND check if the file path ends with .cpp
-                    it.path.endsWith('.cpp')
+                    !it.name.equals('main.cpp') && it.path.endsWith('.cpp')
                 }.collect { it.path }
                 
-                // Check for empty results and fail gracefully if no files are found.
                 if (CONTEXT_FILES.isEmpty()) {
-                    // You can choose to error or warn here based on if 'src' must contain files.
-                    // Since the original code checked for existence, an error is appropriate if no files are found in 'src'.
                     error "Error: No .cpp files found in the 'src' directory."
                 }
 
+                // CONSOLIDATED: Build combinedContext ONCE for requirements generation
+                def combinedContext = ""
+                CONTEXT_FILES.each { filePath ->
+                    try {
+                        def fileContent = readFile(file: filePath, encoding: 'UTF-8')
+                        combinedContext += "## File: ${filePath}\n\n${fileContent}\n\n\n"
+                    } catch (FileNotFoundException e) {
+                        echo "Warning: Context file not found: ${filePath}"
+                    }
+                }
                 echo "Context files found: ${CONTEXT_FILES}"
-                // --- INITIAL BUILD STEP (Updated for Makefile) ---
+
+                // --- REQUIREMENTS FILE GENERATION ---
+                if (!fileExists(env.REQUIREMENTS_FILE)) { 
+                    writeFile file: env.REQUIREMENTS_FILE, text: ''
+                }
+                
+                def promptForRequirements = params.prompt_requirements + combinedContext
+                def requirementsPromptFile = "build/prompt_requirements_temp.txt"
+                writeFile file: requirementsPromptFile, text: promptForRequirements, encoding: 'UTF-8' 
+                
+                withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
+                    echo "Writing requirements file..."
+                    sh """
+                    ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${requirementsPromptFile}' '.' '${env.REQUIREMENTS_FILE}'
+                    """
+                }
+                
+                // --- INITIAL BUILD AND HASH SETUP ---
                 echo "Building test executable for the first time..."
                 sh 'mkdir -p build' 
-                sh 'make all'
+                sh 'make build/test_number_to_string' // Assuming this is the desired initial build target
                 
-                // --- I.2 HASH SETUP (MOVED & CORRECTED) ---
-                // This block runs ONCE after the initial build to load any existing, manually-written, or previous tests.
+                // Load existing test hashes once before the loop
                 def testFile = "tests/ai_generated_tests.cpp"
                 if (fileExists(testFile)) {
                     echo "Initializing hash list from existing tests..."
                     def existingContent = readFile(file: testFile, encoding: 'UTF-8')
-                    // Split the content into test blocks
                     def testBlocks = existingContent.split(/(?=\nTEST\()/) 
                     testBlocks.each { block ->
                         if (block.trim().startsWith('TEST(')) {
-                            // The sha1 closure is used here, defined at the top of the script block.
                             existingTestHashes.add(sha1(block.trim()))
                         }
                     }
@@ -126,47 +134,78 @@ stages {
                 while (iteration < maxIterations) {
                     def testFileSave = "tests/ai_generated_tests_iter_${iteration}.txt"
                     
-                    // --- CLEAR & SETUP: Clear the file and add necessary headers only once ---
+                    // --- CLEAR & SETUP ---
                     echo "Preparing ai_generated_tests.cpp for iteration ${iteration}"
-                    
-                    // We overwrite the file in each iteration with the necessary headers/boilerplate
                     writeFile file: testFile, text: '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n'
                     writeFile file: testFileSave, text: '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n'
 
-                    // Run coverage script (which executes tests internally)
+                    // Run coverage script
                     sh env.COVERAGE_SCRIPT 
 
-                    // --- 1. Read Coverage Data & GENERATE MISS LIST (I.1) ---
-                    // ASSIGNMENT: Variable definitions removed, only assignment remains (Fix for Issue #1)
+                    // --- LCOV PARSING AND MISS LIST GENERATION ---
                     coverageInfoContent = readFile(file: env.COVERAGE_INFO_FILE, encoding: 'UTF-8')
                     linesFound = 0
                     linesHit = 0
                     missList = [] 
                     currentFile = null
-
+                    
+                    def functionMissMap = [:] // Used for targeted context (I.1)
                     def lines = coverageInfoContent.split('\n')
 
                     for (line in lines) {
-                        if (line.startsWith("SF:")) { // Source File
+                        if (line.startsWith("SF:")) { 
                             currentFile = line.substring(3)
-                        } else if (line.startsWith("LF:")) {
-                            linesFound = line.substring(3).toInteger()
-                        } else if (line.startsWith("LH:")) {
-                            linesHit = line.substring(3).toInteger()
+                        } else if (line.startsWith("FN:")) { // Function Name definition
+                            def parts = line.substring(3).split(',')
+                            functionMissMap[parts[1]] = [file: currentFile, startLine: parts[0], hits: 0]
+                        } else if (line.startsWith("FNDA:") && line.endsWith(',0')) { // Function hit data (0 hits)
+                            def functionName = line.substring(5).split(',')[1]
+                            if (functionMissMap.containsKey(functionName)) {
+                                functionMissMap[functionName].hits = 0
+                            }
                         } else if (line.startsWith("DA:") && line.endsWith(',0')) { // Data line with 0 hits
                             def lineNumber = line.substring(3).split(',')[0]
                             missList.add("File: ${currentFile} Line: ${lineNumber} (Uncovered)")
                         }
+                        if (line.startsWith("LF:")) { linesFound = line.substring(3).toInteger() }
+                        if (line.startsWith("LH:")) { linesHit = line.substring(3).toInteger() }
+                    }
+                    
+                    // --- TARGET SELECTION AND PROMPT ASSEMBLY (I.1/I.3) ---
+                    def targetFunction = null
+                    functionMissMap.each { name, data ->
+                        if (data.hits == 0) {
+                            targetFunction = data
+                            return
+                        }
+                    }
+
+                    def reqSpecContent = readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8')
+                    def relevantSourceContent = ""
+                    def targetName = "uncovered lines listed below"
+                    
+                    if (targetFunction) {
+                        targetName = "${targetFunction.name} in ${targetFunction.file}"
+                        echo "AI Target: Focusing on completely missed function: ${targetName}"
+                        
+                        // Extract target file content (Optimization I.3)
+                        CONTEXT_FILES.each { filePath ->
+                            if (filePath == targetFunction.file) {
+                                relevantSourceContent = "## Target Function: ${targetFunction.name} in File: ${filePath}\n\n${readFile(file: filePath, encoding: 'UTF-8')}\n\n\n"
+                                return // Optimization: break CONTEXT_FILES loop
+                            }
+                        }
+                    } else {
+                        echo "No completely missed functions found. Using all existing context."
                     }
                     
                     def missListContent = missList.join('\n')
                     echo "Uncovered lines found:\n${missListContent}"
 
-                    // ... (coverage calculation and min_coverage_target check remains the same)
+                    // --- COVERAGE CHECK ---
                     if (linesFound > 0) {
                         coverage = (linesHit / linesFound) * 100.0
                     }
-
                     echo "Current coverage: ${String.format('%.2f', coverage)}%"
 
                     if (coverage >= params.min_coverage_target.toFloat()) {
@@ -175,21 +214,10 @@ stages {
                     }
 
 
-                    // --- 2. Read Context and Requirements ---
-                    def reqSpecContent = readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8')
-                    
-                    // --- 3. Assemble Final Prompt (I.3) ---
-                    // I.3: TARGETED CONTEXT - Only including source files that might be relevant
-                    def relevantSourceContent = ""
-                    // For this simple example, we assume we only care about number_to_string.cpp/h
-                    CONTEXT_FILES.each { filePath ->
-                        if (filePath.contains('number_to_string')) {
-                            def fileContent = readFile(file: filePath, encoding: 'UTF-8')
-                            relevantSourceContent += "## Relevant Source File: ${filePath}\n\n${fileContent}\n\n\n"
-                        }
-                    }
-
                     def prompt = """${params.prompt_coverage}
+                        
+                        **GOAL: Generate a test case that achieves coverage for the function: ${targetName}.**
+                        
                         Function Requirements Specification:
                         ${reqSpecContent}
                         
@@ -203,40 +231,30 @@ stages {
                         Relevant Source Code:
                         ${relevantSourceContent}""" 
 
-                    // --- Variable Definitions and File Setup (Defined FIRST) ---
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
                     def promptFilePath = "build/prompt_content_iter_${iteration}.txt"
-                    def contextFilePath = env.COVERAGE_INFO_FILE 
-
-                    // 1. Write the multi-line prompt content to the temporary file (MUST BE BEFORE 'sh')
                     writeFile file: promptFilePath, text: prompt, encoding: 'UTF-8' 
 
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                         echo "Analyzing coverage files, iteration ${iteration}..."
-                        
-                        // 2. Call the Python script with all required arguments.
                         sh """
-                        # Simply call the python executable directly from the venv/bin folder.
-                        ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${promptFilePath}' '${contextFilePath}' '${outputPath}'
+                        ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${promptFilePath}' '${env.COVERAGE_INFO_FILE}' '${outputPath}'
                         """ 
                     }
 
-                    // --- 4. Append Generated Test Case (I.2 Debouncing) ---
+                    // --- TEST GENERATION AND DEBOUNCING (I.2) ---
                     def rawOutput = readFile(file: outputPath, encoding: 'UTF-8')
 
-                    // ... (cleanup of rawOutput to get testCaseCode remains the same)
                     def testCaseCode = rawOutput
                         .replaceAll(/(?s)As an AI, I don't have direct access to your local file system.*?\./, '') 
-                        .replaceAll(/```\s*\w*\s*/, '') // Remove opening code block
-                        .replaceAll('```', '')         // Remove closing code block
+                        .replaceAll(/```\s*\w*\s*/, '')
+                        .replaceAll('```', '')
                         .trim()
 
-                    // If the resulting string is empty, the AI refused or provided no code.
                     if (testCaseCode.isEmpty()) {
                         error "AI refused the prompt or generated no code. Check the model output."
                     }
 
-                    // I.2: Test Debouncing/Uniqueness Check
                     def newTestHash = sha1(testCaseCode) 
                     
                     if (existingTestHashes.contains(newTestHash)) {
@@ -244,23 +262,18 @@ stages {
                         continue
                     }
                     
-                    // If unique, add to the tracking list
                     existingTestHashes.add(newTestHash)
                     echo "New unique test case generated (hash: ${newTestHash}). Appending and rebuilding."
 
-                    // If testFile exists, readFile will get the old tests (if any)
                     def existingContent = readFile(file: testFile, encoding: 'UTF-8')
                     def existingContentSave = readFile(file: testFileSave, encoding: 'UTF-8')
                     
-                    // Combine old content with new, cleaned test case code
                     def newContent = existingContent + "\n" + testCaseCode
                     def newContentSave = existingContentSave + "\n" + testCaseCode
                     
-                    // Overwrite the file with ALL cumulative tests.
                     writeFile(file: testFile, text: newContent)
                     writeFile(file: testFileSave, text: newContentSave)
 
-                    // Rebuild tests for next iteration
                     echo "Rebuilding test executable..."
                     sh 'make build/test_number_to_string'
 
@@ -275,18 +288,15 @@ post {
     always {
         echo "This will always run, regardless of the build status."
         
-        // --- ADDED: ARTIFACT ARCHIVAL (II.2) ---
+        // --- ARTIFACT ARCHIVAL (II.2) ---
         archiveArtifacts artifacts: """
             ${env.REQUIREMENTS_FILE},
             tests/ai_generated_tests.cpp,
             ${env.COVERAGE_INFO_FILE}
         """
-        // Archive the entire HTML report directory for easy browsing
         archiveArtifacts artifacts: 'coverage_report/**', allowEmptyArchive: true
-        // ----------------------------------------
         
-        // Clean up using the Makefile's defined target
-        // WRAP THE SH STEP IN A 'script' BLOCK TO ENSURE IT'S EXECUTED CORRECTLY
+        // --- CLEANUP ---
         script {
             sh 'make clean' 
         }
