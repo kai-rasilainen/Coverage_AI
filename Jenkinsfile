@@ -37,18 +37,17 @@ description: 'The coverage prompt to pass to the script.')
         description: 'The minimum code coverage percentage required to stop iteration.')
 }
 
-def sha1(String input) {
-    if (input == null || input.isEmpty()) return ""
-    def md = java.security.MessageDigest.getInstance("SHA-1")
-    md.update(input.getBytes("UTF-8"))
-    return new BigInteger(1, md.digest()).toString(16).padLeft(40, '0')
-}
-
 // The 'stages' block contains the logical divisions of your build process.
 stages {
     stage('Iterative Coverage Improvement') {
         steps {
             script {
+                def sha1(String input) {
+                    if (input == null || input.isEmpty()) return ""
+                    def md = java.security.MessageDigest.getInstance("SHA-1")
+                    md.update(input.getBytes("UTF-8"))
+                    return new BigInteger(1, md.digest()).toString(16).padLeft(40, '0')
+                }
                 def maxIterations = 3
                 def iteration = 0
                 def coverage = 0.0
