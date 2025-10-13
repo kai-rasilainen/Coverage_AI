@@ -116,8 +116,8 @@ stages {
                     // ✅ CORRECTED SH CALL: Uses the required --prompt-file flag.
                     sh """
                     # Simply call the python executable directly from the venv/bin folder.
-                    ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${requirementsPromptFile}' '.' '${env.REQUIREMENTS_FILE}' // MODIFIED: Use env.PROMPT_SCRIPT and env.REQUIREMENTS_FILE
-                    """
+                    ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${requirementsPromptFile}' '.' '${env.REQUIREMENTS_FILE}'
+                    """ // MODIFIED: Removed the Groovy single-line comment inside the sh block.
                 }
                 
                 // -----------------------------------------------------------
