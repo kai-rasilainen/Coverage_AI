@@ -279,7 +279,7 @@ post {
             ${env.COVERAGE_INFO_FILE}
         """
         // Archive the entire HTML report directory for easy browsing
-        archiveArtifacts artifacts: 'coverage_report/**', allowEmpty: true
+        archiveArtifacts artifacts: 'coverage_report/**', allowEmptyArchive: true
         // ----------------------------------------
         
         // Clean up using the Makefile's defined target
