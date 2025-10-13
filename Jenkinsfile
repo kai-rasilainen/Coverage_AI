@@ -37,6 +37,13 @@ description: 'The coverage prompt to pass to the script.')
         description: 'The minimum code coverage percentage required to stop iteration.')
 }
 
+def sha1(String input) {
+    if (input == null || input.isEmpty()) return ""
+    def md = java.security.MessageDigest.getInstance("SHA-1")
+    md.update(input.getBytes("UTF-8"))
+    return new BigInteger(1, md.digest()).toString(16).padLeft(40, '0')
+}
+
 // The 'stages' block contains the logical divisions of your build process.
 stages {
     stage('Iterative Coverage Improvement') {
@@ -136,7 +143,21 @@ stages {
                 while (iteration < maxIterations) {
                     def testFile = "tests/ai_generated_tests.cpp"
                     def testFileSave = "tests/ai_generated_tests_iter_${iteration}.txt"
+
+                    // NEW: List to track hashes of all successful, unique tests
+                    def existingTestHashes = [] 
                     
+                    // NEW: Read existing tests to initialize the hash list if starting mid-run
+                    if (iteration == 0 && fileExists(testFile)) {
+                        def existingContent = readFile(file: testFile, encoding: 'UTF-8')
+                        // A simple, quick way to split existing tests for initial hashing (requires a standardized test structure)
+                        def testBlocks = existingContent.split(/(?=\nTEST\()/) 
+                        testBlocks.each { block ->
+                            if (block.trim().startsWith('TEST(')) {
+                                existingTestHashes.add(sha1(block.trim()))
+                            }
+                        }
+                    }
                     // --- CLEAR & SETUP: Clear the file and add necessary headers only once ---
                     echo "Preparing ai_generated_tests.cpp for iteration ${iteration}"
                     
@@ -149,22 +170,32 @@ stages {
                     // Run coverage script (which executes tests internally)
                     sh env.COVERAGE_SCRIPT // MODIFIED: Use env.COVERAGE_SCRIPT
 
-                    // --- 1. Read Coverage Data (Corrected for CPS serialization) ---
-                    // The coverage.sh script places this in the 'build' directory.
-                    def coverageInfoContent = readFile(file: env.COVERAGE_INFO_FILE, encoding: 'UTF-8') // MODIFIED: Use env.COVERAGE_INFO_FILE
-                    def linesFound = 0
                     def linesHit = 0
+                    def missList = [] // NEW: List to store uncovered lines (LF: and LH: are global)
+                    def currentFile = null
 
-                    // Split the content into an array of lines and iterate using a safe 'for' loop
                     def lines = coverageInfoContent.split('\n')
 
                     for (line in lines) {
-                        if (line.startsWith("LF:")) {
+                        if (line.startsWith("SF:")) { // Source File
+                            currentFile = line.substring(3)
+                        } else if (line.startsWith("LF:")) {
                             linesFound = line.substring(3).toInteger()
                         } else if (line.startsWith("LH:")) {
                             linesHit = line.substring(3).toInteger()
+                        } else if (line.startsWith("DA:") && line.endsWith(',0')) { // Data line with 0 hits
+                            def parts = line.substring(3).split(',')
+                            def lineNumber = parts[0]
+                            def functionName = "" 
+                            
+                            // Optional: Try to find function name above the uncovered line 
+                            // This is complex, so for simplicity, we just list the line number
+                            missList.add("File: ${currentFile} Line: ${lineNumber} (Uncovered)")
                         }
                     }
+                    
+                    def missListContent = missList.join('\n')
+                    echo "Uncovered lines found:\n${missListContent}"
 
                     // ... rest of your coverage calculation logic ...
                     if (linesFound > 0) {
@@ -184,13 +215,35 @@ stages {
 
                     def reqSpecContent = readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8') // MODIFIED: Use env.REQUIREMENTS_FILE
                     def coverageReportContent = readFile(file: env.COVERAGE_REPORT_HTML, encoding: 'UTF-8') // MODIFIED: Use env.COVERAGE_REPORT_HTML
-
+ 
                      // --- 3. Assemble Final Prompt ---
+                    // NOTE: Removed env.COVERAGE_REPORT_HTML content. Using the new missListContent is better.
+                    
+                    // NEW: TARGETED CONTEXT (I.3)
+                    // If missList is empty, there is no need to prompt the model. The break condition should handle it.
+                    // If you want to ONLY send the relevant source file content:
+                    def relevantSourceContent = ""
+                    // For this simple example, we assume we only care about number_to_string.cpp/h
+                    CONTEXT_FILES.each { filePath ->
+                        if (filePath.contains('number_to_string')) {
+                            def fileContent = readFile(file: filePath, encoding: 'UTF-8')
+                            relevantSourceContent += "## Relevant Source File: ${filePath}\n\n${fileContent}\n\n\n"
+                        }
+                    }
+
                     def prompt = """${params.prompt_coverage}
                         Function Requirements Specification:
                         ${reqSpecContent}
-                        Coverage Report Content:
-                        ${coverageReportContent}"""
+                        
+                        ---
+                        
+                        Uncovered Code Paths (Miss List):
+                        ${missListContent}
+                        
+                        ---
+                        
+                        Relevant Source Code:
+                        ${relevantSourceContent}""" // Use targeted content
 
                     // --- Variable Definitions and File Setup (Defined FIRST) ---
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
@@ -230,14 +283,28 @@ stages {
                         error "AI refused the prompt or generated no code. Check the model output."
                     }
 
+                    // --- NEW: Test Debouncing/Uniqueness Check (I.2) ---
+                    def newTestHash = sha1(testCaseCode)
+                    
+                    if (existingTestHashes.contains(newTestHash)) {
+                        echo "Warning: Generated test case is identical (hash: ${newTestHash}). Skipping rebuild and next iteration."
+                        // Do NOT increment iteration here; break or continue to next iteration without rebuilding tests
+                        // We will just 'continue' to the top of the loop to re-check coverage and potentially stop/re-prompt
+                        continue
+                    }
+                    
+                    // If unique, add to the tracking list
+                    existingTestHashes.add(newTestHash)
+                    echo "New unique test case generated (hash: ${newTestHash}). Appending and rebuilding."
+
                     // If testFile exists, readFile will get the old tests (if any)
                     def existingContent = readFile(file: testFile, encoding: 'UTF-8')
                     def existingContentSave = readFile(file: testFileSave, encoding: 'UTF-8')
-                    
+                 
                     // Combine old content with new, cleaned test case code
                     def newContent = existingContent + "\n" + testCaseCode
                     def newContentSave = existingContentSave + "\n" + testCaseCode
-                    
+              
                     // Overwrite the file with ALL cumulative tests.
                     writeFile(file: testFile, text: newContent)
                     writeFile(file: testFileSave, text: newContentSave)
