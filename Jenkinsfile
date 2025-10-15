@@ -223,6 +223,8 @@ stages {
                     def MAX_CHAR_THRESHOLD = 2000 
                     def FINAL_CONTEXT = RAW_CONTEXT
 
+                    echo "Raw context size: ${RAW_CONTEXT.length()} characters."
+                    
                     if (RAW_CONTEXT.length() > MAX_CHAR_THRESHOLD) {
                         echo "Context too large (${RAW_CONTEXT.length()} chars). Summarizing..."
                         def rawContextTempFile = "build/raw_context_iter_${iteration}.txt"
