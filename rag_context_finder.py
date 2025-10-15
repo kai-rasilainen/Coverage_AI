@@ -103,7 +103,6 @@ def main():
         print(f"Error initializing ChromaDB client: {e}", file=sys.stderr)
         sys.exit(1)
 
-
     if args.mode == 'index':
         if not args.files:
             print("Error: --files must be provided for index mode.", file=sys.stderr)
@@ -111,9 +110,10 @@ def main():
             
         index_codebase(client, args.files)
         
-        # CORRECTED: Call .persist() on the persistent_client object
-        persistent_client.persist() 
-        print("Database persisted successfully.")
+        # CORRECTED: REMOVE THE persist() CALL. Persistence is handled automatically or implicitly by PersistentClient.
+        # persistent_client.persist() 
+        # print("Database persisted successfully.") 
+        # We can just exit cleanly.
 
     elif args.mode == 'retrieve':
         if not args.query or not args.output:
