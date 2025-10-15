@@ -95,13 +95,25 @@ def main():
     # Initialize client (uses default embedding model which is sufficient for RAG)
     client = get_db_client()
 
+    # MODIFIED: Get the persistent client instance separately
+    try:
+        persistent_client = chromadb.PersistentClient(path=DB_PATH)
+        client = persistent_client.get_or_create_collection(name=COLLECTION_NAME)
+    except Exception as e:
+        print(f"Error initializing ChromaDB client: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
     if args.mode == 'index':
         if not args.files:
             print("Error: --files must be provided for index mode.", file=sys.stderr)
             sys.exit(1)
+            
         index_codebase(client, args.files)
-        # Persistence call for ChromaDB
-        client.persist()
+        
+        # CORRECTED: Call .persist() on the persistent_client object
+        persistent_client.persist() 
+        print("Database persisted successfully.")
 
     elif args.mode == 'retrieve':
         if not args.query or not args.output:
