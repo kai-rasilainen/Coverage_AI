@@ -67,8 +67,8 @@ stages {
                     # 1. Create the virtual environment in the workspace
                     python3 -m venv venv || python -m venv venv
                     
-                    # 2. Install requests using the venv's python interpreter (Fixes permissions/scoping)
-                    ./venv/bin/python3 -m pip install requests
+                    # 2. MODIFIED: Install all required Python packages for AI and RAG
+                    ./venv/bin/python3 -m pip install requests google-genai chromadb
                 '''
                 
                 // --- DYNAMIC FILE DISCOVERY AND CONTEXT AGGREGATION ---
