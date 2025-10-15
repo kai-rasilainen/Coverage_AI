@@ -12,11 +12,10 @@ COLLECTION_NAME = "code_snippets"
 SNIPPET_SIZE = 500  # Max chunk size for embedding
 
 def get_db_client():
-    """Initializes ChromaDB client."""
-    return chromadb.Client(chromadb.Settings(
-        chroma_db_impl="duckdb+parquet",
-        persist_directory=DB_PATH
-    )).get_or_create_collection(name=COLLECTION_NAME)
+    """Initializes ChromaDB client using the recommended PersistentClient."""
+    # MODIFIED: Use PersistentClient for modern initialization
+    client = chromadb.PersistentClient(path=DB_PATH)
+    return client.get_or_create_collection(name=COLLECTION_NAME)
 
 def get_code_snippets(file_path):
     """Simple function chunker."""
