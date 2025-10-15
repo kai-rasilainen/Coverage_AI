@@ -129,7 +129,17 @@ stages {
                     }
                 }
                 // -----------------------------------------------------------
-
+                // --- RAG STEP 1: INDEXING THE CODEBASE ---
+                echo "Indexing codebase for Semantic Search..."
+                def contextFilesString = CONTEXT_FILES.join(' ')
+                
+                withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
+                    sh """
+                    # Note: You need 'chromadb' installed in your venv for this to work.
+                    ./venv/bin/python3 rag_context_finder.py index --files ${contextFilesString}
+                    """
+                }
+                // ----------------------------------------
 
                 while (iteration < maxIterations) {
                     def testFileSave = "tests/ai_generated_tests_iter_${iteration}.txt"
@@ -180,7 +190,6 @@ stages {
                         }
                     }
 
-                    def reqSpecContent = readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8')
                     def relevantSourceContent = ""
                     def targetName = "uncovered lines listed below"
                     
@@ -200,20 +209,26 @@ stages {
                     }
                     
                     def missListContent = missList.join('\n')
-                    echo "Uncovered lines found:\n${missListContent}"
-
-                    // --- COVERAGE CHECK ---
-                    if (linesFound > 0) {
-                        coverage = (linesHit / linesFound) * 100.0
+                    
+                    // --- RAG STEP 2: RETRIEVE CONTEXT ---
+                    def retrievalQuery = "Uncovered lines requiring a new test case:\n${missListContent}"
+                    def retrievedContextFile = "build/rag_context_iter_${iteration}.txt"
+                    
+                    withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
+                        sh """
+                        ./venv/bin/python3 rag_context_finder.py retrieve \\
+                            --query "${retrievalQuery}" \\
+                            --output "${retrievedContextFile}"
+                        """
                     }
-                    echo "Current coverage: ${String.format('%.2f', coverage)}%"
+                    
+                    def retrievedSourceContent = readFile(file: retrievedContextFile, encoding: 'UTF-8')
+                    echo "Retrieved source context size: ${retrievedSourceContent.length()} characters."
+                    // ------------------------------------
 
-                    if (coverage >= params.min_coverage_target.toFloat()) {
-                        echo "Coverage is ${String.format('%.2f', coverage)}% which meets the target of ${params.min_coverage_target}%. Stopping iteration."
-                        break
-                    }
-
-
+                    def reqSpecContent = readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8')
+                    
+                    // --- 3. Assemble Final Prompt (Use Retrieved Content) ---
                     def prompt = """${params.prompt_coverage}
                         
                         **GOAL: Generate a test case that achieves coverage for the function: ${targetName}.**
@@ -228,8 +243,8 @@ stages {
                         
                         ---
                         
-                        Relevant Source Code:
-                        ${relevantSourceContent}""" 
+                        Relevant Source Code (Retrieved by RAG):
+                        ${retrievedSourceContent}""" // MODIFIED: Use the retrieved content!
 
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
                     def promptFilePath = "build/prompt_content_iter_${iteration}.txt"
