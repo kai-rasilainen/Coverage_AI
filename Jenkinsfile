@@ -228,9 +228,12 @@ stages {
                     if (RAW_CONTEXT.length() > MAX_CHAR_THRESHOLD) {
                         echo "Context too large (${RAW_CONTEXT.length()} chars). Summarizing..."
                         def rawContextTempFile = "build/raw_context_iter_${iteration}.txt"
-                        writeFile file: rawContextTempFile, text: RAW_CONTEXT, encoding: 'UTF-8' 
+                        def rawContextTempFileSave = "raw_context_iter_${iteration}.txt"
+                        writeFile file: rawContextTempFile, text: RAW_CONTEXT, encoding: 'UTF-8'
+                        writeFile file: rawContextTempFileSave, text: RAW_CONTEXT, encoding: 'UTF-8' 
                         
                         def summarizedContextFile = "build/summarized_context_iter_${iteration}.txt"
+                        def summarizedContextFileSave = "summarized_context_iter_${iteration}.txt"
 
                         withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                             sh """
@@ -239,6 +242,7 @@ stages {
                         }
                         
                         FINAL_CONTEXT = readFile(file: summarizedContextFile, encoding: 'UTF-8')
+                        writeFile file: summarizedContextFileSave, text: FINAL_CONTEXT, encoding: 'UTF-8'
                         echo "Summary size: ${FINAL_CONTEXT.length()} characters."
                     }
 
