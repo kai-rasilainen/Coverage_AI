@@ -39,7 +39,7 @@ stages {
     stage('Iterative Coverage Improvement') {
         steps {
             script {
-                // UTILITY CLOSURE: Hashing function for test debouncing (Requires approval)
+                // UTILITY CLOSURE: Hashing function for test debouncing (Requires script approval)
                 def sha1 = { input ->
                     if (input == null || input.isEmpty()) return ""
                     def md = java.security.MessageDigest.getInstance("SHA-1")
@@ -52,9 +52,9 @@ stages {
                 def iteration = 0
                 def coverage = 0.0
                 def existingTestHashes = [] 
-                def CONTEXT_FILES = [] // All C++ files found in src/
+                def CONTEXT_FILES = [] 
                 
-                // Variables used by the LCOV parsing logic
+                // Variables used by the LCOV parsing logic (initialized outside loop scope)
                 def coverageInfoContent = '' 
                 def linesFound = 0
                 def linesHit = 0
@@ -67,7 +67,7 @@ stages {
                     # 1. Create the virtual environment in the workspace
                     python3 -m venv venv || python -m venv venv
                     
-                    # 2. MODIFIED: Install all required Python packages for AI and RAG
+                    # 2. Install all required Python packages for AI and RAG
                     ./venv/bin/python3 -m pip install requests google-genai chromadb
                 '''
                 
@@ -75,6 +75,7 @@ stages {
                 echo "Discovering context files and aggregating source code..."
 
                 def CONTEXT_FILES_LIST = findFiles(glob: 'src/**')
+                // Assignment to pre-defined variable
                 CONTEXT_FILES = CONTEXT_FILES_LIST.findAll { 
                     !it.name.equals('main.cpp') && it.path.endsWith('.cpp')
                 }.collect { it.path }
@@ -83,7 +84,7 @@ stages {
                     error "Error: No .cpp files found in the 'src' directory."
                 }
 
-                // CONSOLIDATED: Build combinedContext ONCE for requirements generation
+                // Build combinedContext ONCE for requirements generation
                 def combinedContext = ""
                 CONTEXT_FILES.each { filePath ->
                     try {
@@ -114,7 +115,7 @@ stages {
                 // --- INITIAL BUILD AND HASH SETUP ---
                 echo "Building test executable for the first time..."
                 sh 'mkdir -p build' 
-                sh 'make build/test_number_to_string' // Assuming this is the desired initial build target
+                sh 'make build/test_number_to_string'
                 
                 // Load existing test hashes once before the loop
                 def testFile = "tests/ai_generated_tests.cpp"
@@ -129,17 +130,17 @@ stages {
                     }
                 }
                 // -----------------------------------------------------------
-                // --- RAG STEP 1: INDEXING THE CODEBASE ---
-                echo "Indexing codebase for Semantic Search..."
+                
+                // --- RAG INDEXING (MOVED HERE FOR OPTIMIZATION) ---
+                echo "Indexing codebase for Semantic Search (RAG)..."
                 def contextFilesString = CONTEXT_FILES.join(' ')
                 
                 withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
                     sh """
-                    # Note: You need 'chromadb' installed in your venv for this to work.
                     ./venv/bin/python3 rag_context_finder.py index --files ${contextFilesString}
                     """
                 }
-                // ----------------------------------------
+                // ---------------------------------------------------
 
                 while (iteration < maxIterations) {
                     def testFileSave = "tests/ai_generated_tests_iter_${iteration}.txt"
@@ -152,20 +153,19 @@ stages {
                     // Run coverage script
                     sh env.COVERAGE_SCRIPT 
 
-                    // --- LCOV PARSING AND MISS LIST GENERATION ---
+                    // --- LCOV PARSING AND MISS LIST GENERATION (I.1) ---
                     coverageInfoContent = readFile(file: env.COVERAGE_INFO_FILE, encoding: 'UTF-8')
                     linesFound = 0
                     linesHit = 0
                     missList = [] 
                     currentFile = null
                     
-                    def functionMissMap = [:] // Used for targeted context (I.1)
+                    def functionMissMap = [:] 
                     def lines = coverageInfoContent.split('\n')
 
                     for (line in lines) {
-                        if (line.startsWith("SF:")) { 
-                            currentFile = line.substring(3)
-                        } else if (line.startsWith("FN:")) { // Function Name definition
+                        if (line.startsWith("SF:")) { currentFile = line.substring(3) }
+                        else if (line.startsWith("FN:")) { // Function Name definition
                             def parts = line.substring(3).split(',')
                             functionMissMap[parts[1]] = [file: currentFile, startLine: parts[0], hits: 0]
                         } else if (line.startsWith("FNDA:") && line.endsWith(',0')) { // Function hit data (0 hits)
@@ -181,7 +181,7 @@ stages {
                         if (line.startsWith("LH:")) { linesHit = line.substring(3).toInteger() }
                     }
                     
-                    // --- TARGET SELECTION AND PROMPT ASSEMBLY (I.1/I.3) ---
+                    // --- TARGET SELECTION AND RAG RETRIEVAL (I.1/I.3/2.A) ---
                     def targetFunction = null
                     functionMissMap.each { name, data ->
                         if (data.hits == 0) {
@@ -190,28 +190,11 @@ stages {
                         }
                     }
 
-                    def relevantSourceContent = ""
+                    def reqSpecContent = readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8')
                     def targetName = "uncovered lines listed below"
                     
-                    if (targetFunction) {
-                        targetName = "${targetFunction.name} in ${targetFunction.file}"
-                        echo "AI Target: Focusing on completely missed function: ${targetName}"
-                        
-                        // Extract target file content (Optimization I.3)
-                        CONTEXT_FILES.each { filePath ->
-                            if (filePath == targetFunction.file) {
-                                relevantSourceContent = "## Target Function: ${targetFunction.name} in File: ${filePath}\n\n${readFile(file: filePath, encoding: 'UTF-8')}\n\n\n"
-                                return // Optimization: break CONTEXT_FILES loop
-                            }
-                        }
-                    } else {
-                        echo "No completely missed functions found. Using all existing context."
-                    }
-                    
-                    def missListContent = missList.join('\n')
-                    
-                    // --- RAG STEP 2: RETRIEVE CONTEXT ---
-                    def retrievalQuery = "Uncovered lines requiring a new test case:\n${missListContent}"
+                    // RAG Retrieval Query (I.3/2.A)
+                    def retrievalQuery = "Uncovered lines requiring a new test case:\n${missList.join('\n')}"
                     def retrievedContextFile = "build/rag_context_iter_${iteration}.txt"
                     
                     withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
@@ -223,12 +206,52 @@ stages {
                     }
                     
                     def retrievedSourceContent = readFile(file: retrievedContextFile, encoding: 'UTF-8')
-                    echo "Retrieved source context size: ${retrievedSourceContent.length()} characters."
-                    // ------------------------------------
+                    def relevantSourceContent = retrievedSourceContent // Start with RAG result
 
-                    def reqSpecContent = readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8')
+                    // Fallback to simpler target name/content if RAG fails or target is null
+                    if (targetFunction) {
+                        targetName = "${targetFunction.name} in ${targetFunction.file}"
+                        echo "AI Target: Focusing on completely missed function: ${targetName}"
+                    } else {
+                        echo "No completely missed functions found. Using RAG context."
+                    }
                     
-                    // --- 3. Assemble Final Prompt (Use Retrieved Content) ---
+                    def missListContent = missList.join('\n')
+
+                    // --- PROMPT COMPRESSION CHECK (3.A/3.B) ---
+                    def RAW_CONTEXT = relevantSourceContent 
+                    def MAX_CHAR_THRESHOLD = 2000 
+                    def FINAL_CONTEXT = RAW_CONTEXT
+
+                    if (RAW_CONTEXT.length() > MAX_CHAR_THRESHOLD) {
+                        echo "Context too large (${RAW_CONTEXT.length()} chars). Summarizing..."
+                        def rawContextTempFile = "build/raw_context_iter_${iteration}.txt"
+                        writeFile file: rawContextTempFile, text: RAW_CONTEXT, encoding: 'UTF-8' 
+                        
+                        def summarizedContextFile = "build/summarized_context_iter_${iteration}.txt"
+
+                        withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
+                            sh """
+                            ./venv/bin/python3 summarize_code.py '${rawContextTempFile}' '${summarizedContextFile}'
+                            """ 
+                        }
+                        
+                        FINAL_CONTEXT = readFile(file: summarizedContextFile, encoding: 'UTF-8')
+                        echo "Summary size: ${FINAL_CONTEXT.length()} characters."
+                    }
+
+                    // --- COVERAGE CHECK ---
+                    if (linesFound > 0) {
+                        coverage = (linesHit / linesFound) * 100.0
+                    }
+                    echo "Current coverage: ${String.format('%.2f', coverage)}%"
+
+                    if (coverage >= params.min_coverage_target.toFloat()) {
+                        echo "Coverage is ${String.format('%.2f', coverage)}% which meets the target of ${params.min_coverage_target}%. Stopping iteration."
+                        break
+                    }
+
+                    // --- ASSEMBLE FINAL PROMPT ---
                     def prompt = """${params.prompt_coverage}
                         
                         **GOAL: Generate a test case that achieves coverage for the function: ${targetName}.**
@@ -243,8 +266,8 @@ stages {
                         
                         ---
                         
-                        Relevant Source Code (Retrieved by RAG):
-                        ${retrievedSourceContent}""" // MODIFIED: Use the retrieved content!
+                        Relevant Source Code:
+                        ${FINAL_CONTEXT}""" // Use the compressed context
 
                     def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
                     def promptFilePath = "build/prompt_content_iter_${iteration}.txt"
