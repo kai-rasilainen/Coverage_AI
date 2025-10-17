@@ -1,3 +1,18 @@
+// 1. TOP-LEVEL SCRIPT BLOCK (Must be BEFORE the 'pipeline' block)
+script {
+    // Load the Groovy file (which returns an object containing the getParams function)
+    def paramsLoader = load 'pipeline-parameters.groovy'
+
+    // Call the function to get the array of parameters.
+    def externalParams = paramsLoader.getParams()
+
+    // Use the 'properties' step to apply the parameters list to the job configuration.
+    properties([
+        parameters(externalParams)
+    ])
+}
+// END OF TOP-LEVEL SCRIPT BLOCK
+
 pipeline {
 agent any
 
@@ -8,20 +23,6 @@ environment {
     COVERAGE_SCRIPT = './coverage.sh'
     COVERAGE_INFO_FILE = 'build/coverage.info'
     COVERAGE_REPORT_HTML = 'coverage_report/index.html'
-}
-
-// ✅ FIX: Use a script block inside the parameters block.
-// This is the correct Declarative syntax for dynamically generated parameters.
-parameters {
-    script {
-        // Load the Groovy file (which returns an object containing the getParams function)
-        def paramsLoader = load 'pipeline-parameters.groovy'
-        
-        // Call the function to get the array of parameters.
-        // When a 'script' block is the only content in 'parameters', 
-        // whatever it returns is used as the parameter definitions.
-        return paramsLoader.getParams()
-    }
 }
 
 stages {
