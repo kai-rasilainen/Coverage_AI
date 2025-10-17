@@ -1,23 +1,6 @@
 pipeline {
 agent any
 
-// 🆕 NEW: Use the 'options' block to load parameters dynamically
-options {
-    script {
-        // Load the Groovy file (which returns an object containing the getParams function)
-        def paramsLoader = load 'pipeline-parameters.groovy'
-        
-        // Call the function to get the array of parameters and set it to an environment variable.
-        // This is a common pattern to pass parameters to the actual parameters block.
-        env.EXTERNAL_PARAMS = paramsLoader.getParams()
-    }
-}
-
-// 🆕 NEW: Use a parameters block that references the loaded array
-parameters {
-    env.EXTERNAL_PARAMS
-}
-
 // Environment variables centralize configuration paths
 environment {
     REQUIREMENTS_FILE = './requirements.md'
@@ -25,6 +8,20 @@ environment {
     COVERAGE_SCRIPT = './coverage.sh'
     COVERAGE_INFO_FILE = 'build/coverage.info'
     COVERAGE_REPORT_HTML = 'coverage_report/index.html'
+}
+
+// ✅ FIX: Use a script block inside the parameters block.
+// This is the correct Declarative syntax for dynamically generated parameters.
+parameters {
+    script {
+        // Load the Groovy file (which returns an object containing the getParams function)
+        def paramsLoader = load 'pipeline-parameters.groovy'
+        
+        // Call the function to get the array of parameters.
+        // When a 'script' block is the only content in 'parameters', 
+        // whatever it returns is used as the parameter definitions.
+        return paramsLoader.getParams()
+    }
 }
 
 stages {
