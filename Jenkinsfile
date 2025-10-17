@@ -3,11 +3,9 @@ script {
     // 🆕 FIX: Use a 'node' block to ensure a workspace (FilePath) is available
     node('master') { // Use 'any' to pick any available agent
         
-        // Ensure the repository is checked out. 
-        // This is necessary because 'node' alone doesn't guarantee checkout.
-        // If your job is configured for SCM checkout, this might be redundant, 
-        // but it's safer to include for the parameter file.
-        // checkout scm 
+        // 🆕 FIX: Explicitly check out the source code (SCM) here.
+        // The parameters file must be available before the 'load' step runs.
+        checkout scm 
         
         // If you are using a Multibranch Pipeline, the files should be checked out already, 
         // so we can often skip the 'checkout scm' step here and rely on the existing workspace.
