@@ -1,15 +1,28 @@
 // 1. TOP-LEVEL SCRIPT BLOCK (Must be BEFORE the 'pipeline' block)
 script {
-    // Load the Groovy file (which returns an object containing the getParams function)
-    def paramsLoader = load 'pipeline-parameters.groovy'
+    // 🆕 FIX: Use a 'node' block to ensure a workspace (FilePath) is available
+    node('any') { // Use 'any' to pick any available agent
+        
+        // Ensure the repository is checked out. 
+        // This is necessary because 'node' alone doesn't guarantee checkout.
+        // If your job is configured for SCM checkout, this might be redundant, 
+        // but it's safer to include for the parameter file.
+        // checkout scm 
+        
+        // If you are using a Multibranch Pipeline, the files should be checked out already, 
+        // so we can often skip the 'checkout scm' step here and rely on the existing workspace.
 
-    // Call the function to get the array of parameters.
-    def externalParams = paramsLoader.getParams()
+        // Load the Groovy file
+        def paramsLoader = load 'pipeline-parameters.groovy'
 
-    // Use the 'properties' step to apply the parameters list to the job configuration.
-    properties([
-        parameters(externalParams)
-    ])
+        // Call the function to get the array of parameters.
+        def externalParams = paramsLoader.getParams()
+
+        // Use the 'properties' step to apply the parameters list to the job configuration.
+        properties([
+            parameters(externalParams)
+        ])
+    }
 }
 // END OF TOP-LEVEL SCRIPT BLOCK
 
