@@ -1,6 +1,23 @@
 pipeline {
 agent any
 
+// 🆕 NEW: Use the 'options' block to load parameters dynamically
+options {
+    script {
+        // Load the Groovy file (which returns an object containing the getParams function)
+        def paramsLoader = load 'pipeline-parameters.groovy'
+        
+        // Call the function to get the array of parameters and set it to an environment variable.
+        // This is a common pattern to pass parameters to the actual parameters block.
+        env.EXTERNAL_PARAMS = paramsLoader.getParams()
+    }
+}
+
+// 🆕 NEW: Use a parameters block that references the loaded array
+parameters {
+    env.EXTERNAL_PARAMS
+}
+
 // Environment variables centralize configuration paths
 environment {
     REQUIREMENTS_FILE = './requirements.md'
@@ -8,31 +25,6 @@ environment {
     COVERAGE_SCRIPT = './coverage.sh'
     COVERAGE_INFO_FILE = 'build/coverage.info'
     COVERAGE_REPORT_HTML = 'coverage_report/index.html'
-}
-
-parameters {
-    string(
-        name: 'prompt_console',
-        defaultValue: """Read Jenkins console output file and provide a detailed analysis of its content. Write your analysis in a clear and structured manner.""",
-        description: 'The console prompt to pass to the script.')
-    string(
-        name: 'prompt_requirements',
-        defaultValue: """Create a simple requirements.md file from source code provided below. Focus only for the unit tests.""",
-        description: 'The console prompt to pass to the script.')
-    string(
-        name: 'prompt_coverage',
-        defaultValue: """Based only on the context provided, generate the C++ source code for a Google Test case.
-The test code must use the format EXPECT_EQ(expected, actual).
-You must use the header file: #include "number_to_string.h".
-DO NOT include any supporting class or struct definitions (like NumberGroup).
-DO NOT include any headers (like iostream or gtest).
-DO NOT include explanations, comments, or markdown wrappers.
-Only output the raw C++ code for the test function.""",
-description: 'The coverage prompt to pass to the script.')
-    string(
-        name: 'min_coverage_target',
-        defaultValue: '100.0',
-        description: 'The minimum code coverage percentage required to stop iteration.')
 }
 
 stages {
