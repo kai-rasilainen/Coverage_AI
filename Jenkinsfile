@@ -1,7 +1,7 @@
 // 1. TOP-LEVEL SCRIPT BLOCK (Must be BEFORE the 'pipeline' block)
 script {
     // 🆕 FIX: Use a 'node' block to ensure a workspace (FilePath) is available
-    node('built-in node') { // Use 'any' to pick any available agent
+    node('Built-In Node') { // Use 'any' to pick any available agent
         
         // Ensure the repository is checked out. 
         // This is necessary because 'node' alone doesn't guarantee checkout.
