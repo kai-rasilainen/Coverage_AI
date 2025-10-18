@@ -55,13 +55,6 @@ stages {
                 def existingTestHashes = [] 
                 def CONTEXT_FILES = [] 
                 
-                // Variables used by the LCOV parsing logic (initialized outside loop scope)
-                def coverageInfoContent = '' 
-                def linesFound = 0
-                def linesHit = 0
-                def missList = []
-                def currentFile = null
-                
                 // --- VENV SETUP AND DEPENDENCY INSTALLATION ---
                 echo "Setting up Python virtual environment and installing dependencies..."
                 sh '''
@@ -151,36 +144,22 @@ stages {
                     writeFile file: testFile, text: '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n'
                     writeFile file: testFileSave, text: '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n'
 
+                    // --- LOAD PARSER UTILITY ---
+                    def lcovParser = load 'lcovParser.groovy'
+
                     // Run coverage script
                     sh env.COVERAGE_SCRIPT 
 
                     // --- LCOV PARSING AND MISS LIST GENERATION (I.1) ---
-                    coverageInfoContent = readFile(file: env.COVERAGE_INFO_FILE, encoding: 'UTF-8')
-                    linesFound = 0
-                    linesHit = 0
-                    missList = [] 
-                    currentFile = null
-                    
-                    def functionMissMap = [:] 
-                    def lines = coverageInfoContent.split('\n')
+                    // Note: We pass 'this' (the current Script binding) to allow the parser 
+                    // to use Jenkins steps like readFile.
+                    def parseResult = lcovParser(this, env.COVERAGE_INFO_FILE)
 
-                    for (line in lines) {
-                        if (line.startsWith("SF:")) { currentFile = line.substring(3) }
-                        else if (line.startsWith("FN:")) { // Function Name definition
-                            def parts = line.substring(3).split(',')
-                            functionMissMap[parts[1]] = [file: currentFile, startLine: parts[0], hits: 0]
-                        } else if (line.startsWith("FNDA:") && line.endsWith(',0')) { // Function hit data (0 hits)
-                            def functionName = line.substring(5).split(',')[1]
-                            if (functionMissMap.containsKey(functionName)) {
-                                functionMissMap[functionName].hits = 0
-                            }
-                        } else if (line.startsWith("DA:") && line.endsWith(',0')) { // Data line with 0 hits
-                            def lineNumber = line.substring(3).split(',')[0]
-                            missList.add("File: ${currentFile} Line: ${lineNumber} (Uncovered)")
-                        }
-                        if (line.startsWith("LF:")) { linesFound = line.substring(3).toInteger() }
-                        if (line.startsWith("LH:")) { linesHit = line.substring(3).toInteger() }
-                    }
+                    // Extract the required variables from the returned map
+                    def linesFound = parseResult.linesFound
+                    def linesHit = parseResult.linesHit
+                    def missList = parseResult.missList 
+                    def functionMissMap = parseResult.functionMissMap
                     
                     // --- TARGET SELECTION AND RAG RETRIEVAL (I.1/I.3/2.A) ---
                     def targetFunction = null
