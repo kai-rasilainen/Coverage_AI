@@ -145,7 +145,12 @@ stages {
                     writeFile file: testFileSave, text: '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n'
 
                     // --- LOAD PARSER UTILITY ---
-                    def lcovParser = load 'lcovParser.groovy'
+                    def lcovParser
+                    if (fileExists('lcovParser.groovy')) {
+                        lcovParser = load 'lcovParser.groovy'
+                    } else {
+                        error "FATAL: Required utility file 'lcovParser.groovy' not found in workspace."
+                    }
 
                     // Run coverage script
                     sh env.COVERAGE_SCRIPT 
