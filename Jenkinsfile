@@ -46,6 +46,8 @@ stages {
                 def existingTestHashes = [] 
                 def CONTEXT_FILES = [] 
                 
+                // 🆕 FIX: Ensure the script is executable before running it
+                sh 'chmod +x setup_env.sh'
                 // --- VENV SETUP AND DEPENDENCY INSTALLATION ---
                 sh './setup_env.sh'
                 
