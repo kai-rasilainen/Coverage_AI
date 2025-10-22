@@ -1,14 +1,13 @@
-// lcovParser.groovy
+// lcovParser.groovy (Corrected - Defines and returns a Closure)
 /**
  * Parses an LCOV coverage info file content to calculate coverage metrics
  * and generate a list of uncovered lines (missList).
- * * @param steps The 'steps' object from the Jenkins context (to access readFile, etc.)
+ * @param steps The 'steps' object from the Jenkins context (to access readFile, etc.)
  * @param coverageInfoFile The path to the LCOV file (e.g., 'build/coverage.info')
  * @return A map containing linesFound, linesHit, missList, and functionMissMap.
  */
-def call(steps, coverageInfoFile) {
-    // Inject the current steps context to allow Groovy to call Jenkins steps
-    // like readFile, echo, etc., from within this external file.
+{ steps, coverageInfoFile -> // <-- Defines an *anonymous closure* that accepts the arguments
+    // The name of the argument is now defined here, not in 'def call'.
     def script = steps 
 
     // Initialize return map variables
@@ -51,10 +50,11 @@ def call(steps, coverageInfoFile) {
         if (line.startsWith("LH:")) { linesHit = line.substring(3).toInteger() }
     }
     
+    // This is the last expression, which is returned by the closure and thus by 'load'
     return [
         linesFound: linesFound, 
         linesHit: linesHit, 
         missList: missList, 
         functionMissMap: functionMissMap
     ]
-}
+} // <-- End of the closure. This closure is the value returned by `load`.
