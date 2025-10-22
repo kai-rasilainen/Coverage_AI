@@ -1,14 +1,10 @@
 // 1. TOP-LEVEL SCRIPT BLOCK (Must be BEFORE the 'pipeline' block)
 script {
-    // 🆕 FIX: Use a 'node' block to ensure a workspace (FilePath) is available
+    // Use a 'node' block to ensure a workspace (FilePath) is available
     node('master') { // Use 'any' to pick any available agent
         
-        // 🆕 FIX: Explicitly check out the source code (SCM) here.
-        // The parameters file must be available before the 'load' step runs.
+        // Explicitly check out the source code (SCM) here.
         checkout scm 
-        
-        // If you are using a Multibranch Pipeline, the files should be checked out already, 
-        // so we can often skip the 'checkout scm' step here and rely on the existing workspace.
 
         // Load the Groovy file
         def paramsLoader = load 'pipeline-parameters.groovy'
@@ -51,14 +47,7 @@ stages {
                 def CONTEXT_FILES = [] 
                 
                 // --- VENV SETUP AND DEPENDENCY INSTALLATION ---
-                echo "Setting up Python virtual environment and installing dependencies..."
-                sh '''
-                    # 1. Create the virtual environment in the workspace
-                    python3 -m venv venv || python -m venv venv
-                    
-                    # 2. Install all required Python packages for AI and RAG
-                    ./venv/bin/python3 -m pip install requests google-genai chromadb
-                '''
+                sh './setup_env.sh'
                 
                 // --- DYNAMIC FILE DISCOVERY AND CONTEXT AGGREGATION ---
                 echo "Discovering context files and aggregating source code..."
@@ -144,7 +133,7 @@ stages {
                     if (fileExists('lcovParser.groovy')) {
                         lcovParser = load 'lcovParser.groovy'
                         
-                        // 🆕 FIX: Check if the load operation was successful
+                        // Check if the load operation was successful
                         if (lcovParser == null) {
                             error "FATAL: 'lcovParser.groovy' found but 'load' step returned a null object. Check the external script's syntax."
                         }
