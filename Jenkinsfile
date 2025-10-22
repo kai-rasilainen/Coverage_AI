@@ -145,9 +145,14 @@ stages {
                     writeFile file: testFileSave, text: '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n'
 
                     // --- LOAD PARSER UTILITY ---
-                    def lcovParser
+                    def lcovParser = null // Explicitly initialize to null
                     if (fileExists('lcovParser.groovy')) {
                         lcovParser = load 'lcovParser.groovy'
+                        
+                        // 🆕 FIX: Check if the load operation was successful
+                        if (lcovParser == null) {
+                            error "FATAL: 'lcovParser.groovy' found but 'load' step returned a null object. Check the external script's syntax."
+                        }
                     } else {
                         error "FATAL: Required utility file 'lcovParser.groovy' not found in workspace."
                     }
