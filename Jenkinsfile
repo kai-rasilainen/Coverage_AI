@@ -40,13 +40,8 @@ stages {
     stage('Iterative Coverage Improvement') {
         steps {
             script {
-                // UTILITY CLOSURE: Hashing function for test debouncing (Requires script approval)
-                def sha1 = { input ->
-                    if (input == null || input.isEmpty()) return ""
-                    def md = java.security.MessageDigest.getInstance("SHA-1")
-                    md.update(input.getBytes("UTF-8"))
-                    return new BigInteger(1, md.digest()).toString(16).padLeft(40, '0')
-                }
+                // --- LOAD UTILITIES ---
+                def sha1 = load 'sha1Utils.groovy' // Load the new hashing utility
                 
                 // --- VARIABLE INITIALIZATION ---
                 def maxIterations = 3
