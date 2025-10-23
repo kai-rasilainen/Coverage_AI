@@ -1,26 +1,16 @@
-// Use an 'options' block to handle declarative job setup like parameters
-// Note: You must ensure 'pipeline-parameters.groovy' returns the list of parameters.
-// This is typically done via the 'properties' step, which is hard to integrate 
-// cleanly when dynamically loading Groovy outside of the build stages.
-// The best practice is to move dynamic logic into a 'script' step inside a stage, 
-// or use the 'timestamps' option, etc.
-
-// Since your top-level script is purely for setting parameters, we'll keep
-// the SCM checkout/loading *outside* the pipeline block, but without the redundant
-// 'checkout scm' inside the pipeline's implicit checkout.
-
-// 1. TOP-LEVEL SCRIPT BLOCK (Remains to set parameters before pipeline execution)
+// 1. TOP-LEVEL SCRIPT BLOCK
 script {
-    // Use a 'node' block to ensure a workspace (FilePath) is available
     node('master') { 
         
-        // **CRITICAL FIX: CLEANUP BEFORE CHECKOUT**
-        // Since this script block also performs a checkout, clean the venv here
-        // to prevent subsequent checkouts (e.g., in the pipeline block) from failing.
+        // --- CRITICAL FIX: CLEANUP VENV BEFORE ANY GIT OPERATION ---
+        // 1. Fix ownership of the whole workspace (in case 'jenkins' user can't delete 'kai' files)
         sh 'sudo chown -R jenkins:jenkins /var/lib/jenkins/workspace/Coverage_AI || true' 
-        sh 'rm -rf venv || true' // Use || true to prevent failure if venv doesn't exist
+        
+        // 2. Delete the persistent, permission-locked venv folder
+        sh 'rm -rf venv || true'
+        // -----------------------------------------------------------
 
-        // Explicitly check out the source code (SCM) here.
+        // Now that the venv is gone, Git can safely check out the source code
         checkout scm 
 
         // Load the Groovy file
@@ -36,7 +26,6 @@ script {
     }
 }
 // END OF TOP-LEVEL SCRIPT BLOCK
-// -----------------------------------------------------------------------------------
 
 pipeline {
     agent any
