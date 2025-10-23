@@ -63,21 +63,11 @@ pipeline {
                         error "Error: No .cpp files found in the 'src' directory."
                     }
 
-                    // --- REQUIREMENTS FILE GENERATION ---
-                    if (!fileExists(env.REQUIREMENTS_FILE)) { 
-                        writeFile file: env.REQUIREMENTS_FILE, text: ''
-                    }
-                    
-                    def promptForRequirements = params.prompt_requirements + combinedContext
-                    def requirementsPromptFile = "build/prompt_requirements_temp.txt"
-                    writeFile file: requirementsPromptFile, text: promptForRequirements, encoding: 'UTF-8' 
-                    
-                    withCredentials([string(credentialsId: 'GEMINI_API_KEY_SECRET', variable: 'GEMINI_API_KEY')]) {
-                        echo "Writing requirements file..."
-                        sh """
-                        ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${requirementsPromptFile}' '.' '${env.REQUIREMENTS_FILE}'
-                        """
-                    }
+                    // Load the new utility
+                    def reqsGenerator = load 'generate_reqs.groovy'
+
+                    // --- REQUIREMENTS FILE GENERATION (EXTERNALIZED) ---
+                    reqsGenerator.run(this, env, params, combinedContext)
                     
                     // --- INITIAL BUILD AND HASH SETUP ---
                     echo "Building test executable for the first time..."
