@@ -45,6 +45,9 @@ stages {
                 def coverage = 0.0
                 def existingTestHashes = [] 
                 def CONTEXT_FILES = [] 
+
+                sh 'sudo chown -R jenkins:jenkins /var/lib/jenkins/workspace/Coverage_AI || true' 
+                sh 'rm -rf venv'
                 
                 // 🆕 FIX: Ensure the script is executable before running it
                 sh 'chmod +x setup_env.sh'
