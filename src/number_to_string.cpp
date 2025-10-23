@@ -31,7 +31,7 @@ std::string returnNumberVariant1(const std::string& str, const int number) {
         return "POSITIVE1: " + str + std::to_string(number);
     }
 }
-
+/*
 std::string returnNumberVariant2(const std::string& str, const int number) {
     if (number < 0) {
         return "NEGATIVE2: " + str + std::to_string(number);
@@ -68,3 +68,4 @@ std::string returnNumberVariant5(const std::string& str, const int number) {
         return "POSITIVE5: " + str + std::to_string(number);
     }
 }
+*/
