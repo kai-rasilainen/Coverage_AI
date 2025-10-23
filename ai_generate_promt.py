@@ -2,50 +2,77 @@ import os
 import sys
 import json
 import time
-import requests
-import argparse # Used for robust argument parsing
+import argparse 
 
-def get_gemini_api_key():
-    """Retrieves the Gemini API key from environment variables."""
-    return os.environ.get('GEMINI_API_KEY', '')
+# Removed: import requests
+# Removed: from google import genai
 
-def generate_content(prompt, api_key):
-    """Calls the Gemini API to generate text content."""
-    # Using gemini-2.5-flash for its speed and capability in code generation
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={api_key}"
-    headers = {
-        'Content-Type': 'application/json',
-    }
-    payload = {
-        'contents': [
-            {
-                'parts': [
-                    {'text': prompt}
-                ]
-            }
-        ]
-    }
+# Added: Ollama client library
+try:
+    import ollama
+    import requests # Keep requests to handle exceptions from the ollama client
+except ImportError:
+    print("Ollama or requests library not found. Please run 'pip install ollama requests'.", file=sys.stderr)
+    sys.exit(1)
+
+
+# --- CONFIGURATION (Customize these) ---
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = "codellama"  # Use a code-generation model you have pulled in Ollama (e.g., codellama, deepseek-coder)
+MAX_RETRIES = 5
+# ----------------------------------------
+
+
+def generate_content(prompt: str) -> Dict | None:
+    """Calls the Ollama API to generate text content using exponential backoff."""
     
-    # Use exponential backoff to handle potential rate-limiting.
-    for i in range(5):
+    # Use the official Python client for robust communication
+    client = ollama.Client(host=OLLAMA_HOST)
+
+    # The prompt should be structured for a chat model (system/user roles)
+    messages = [
+        {
+            'role': 'system', 
+            'content': "You are an expert C++ unit test developer. Your task is to generate ONLY the GTest C++ code required to meet the provided requirements and cover the missing lines. Do not include any explanation, markdown formatting fences (```), or extra text outside of the raw C++ code block."
+        },
+        {
+            'role': 'user', 
+            'content': prompt
+        }
+    ]
+    
+    # Use exponential backoff to handle transient errors (connection issues, etc.)
+    for i in range(MAX_RETRIES):
         try:
-            response = requests.post(url, headers=headers, data=json.dumps(payload))
-            response.raise_for_status() # Raise an exception for bad status codes (e.g., 400, 500)
-            return response.json()
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 429: # Too Many Requests
-                sleep_time = 2 ** i # Exponential backoff
-                print(f"Rate limit exceeded. Retrying in {sleep_time} seconds...")
-                time.sleep(sleep_time)
-            else:
-                print(f"HTTP Error: {e.response.status_code} - {e.response.text}", file=sys.stderr)
+            # Use ollama.chat for instruction-following/code generation tasks
+            response = client.chat(
+                model=OLLAMA_MODEL,
+                messages=messages,
+                options={
+                    "temperature": 0.5, # Balance creativity and reliability
+                    "num_ctx": 4096     # Ensure context window is large enough
+                }
+            )
+            return response
+            
+        except requests.exceptions.ConnectionError:
+            # This handles the case where Ollama isn't running or the host is unreachable
+            sleep_time = 2 ** i # Exponential backoff
+            print(f"Ollama connection error. Retrying in {sleep_time} seconds...")
+            if i + 1 == MAX_RETRIES:
+                print("Failed to connect to Ollama after multiple retries.", file=sys.stderr)
                 return None
+            time.sleep(sleep_time)
+            
         except Exception as e:
-            print(f"An unexpected error occurred: {e}", file=sys.stderr)
+            # Handle any other unexpected errors from the client or API
+            print(f"An unexpected error occurred during Ollama API call: {e}", file=sys.stderr)
             return None
+            
     return None
 
-def write_to_file(file_path, content):
+
+def write_to_file(file_path: str, content: str):
     """Writes the generated content to a file."""
     try:
         # Use explicit UTF-8 encoding for reliable writing
@@ -55,29 +82,22 @@ def write_to_file(file_path, content):
     except IOError as e:
         print(f"Error writing to file {file_path}: {e}", file=sys.stderr)
 
+
 if __name__ == '__main__':
-    # --- START: Argument Parsing Correction ---
-    # We now expect the prompt to be passed as a file path using --prompt-file
     parser = argparse.ArgumentParser(description="AI prompt generation tool for Jenkins coverage improvement.")
     
-    # Required argument for the prompt file path
     parser.add_argument('--prompt-file', required=True, help='Path to the file containing the multi-line prompt content (generated by Jenkins).')
     
-    # Positional arguments for context and output files (maintaining original order)
+    # Positional arguments (context_file is not used in this script but kept for interface consistency)
     parser.add_argument('context_file', help='Path to the coverage context file (e.g., build/coverage.info).')
     parser.add_argument('output_file', help='Path to the file where the AI output (test code) will be written.')
     
     args = parser.parse_args()
     
-    # --- END: Argument Parsing Correction ---
-    
-    # --- START: File Reading Correction ---
+    # --- File Reading ---
     try:
-        # Read the prompt content from the file path provided by Jenkins.
-        # Using 'utf-8' encoding here is key to preventing the decoding errors.
         with open(args.prompt_file, 'r', encoding='utf-8') as f:
             prompt = f.read()
-
     except FileNotFoundError:
         print(f"Error: Prompt file not found at {args.prompt_file}", file=sys.stderr)
         sys.exit(1)
@@ -85,29 +105,20 @@ if __name__ == '__main__':
         print(f"Error reading prompt file {args.prompt_file}: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # --- END: File Reading Correction ---
-
-    # log_path and output_path variables renamed for clarity, 
-    # but still map to the positional arguments:
-    # log_path = args.context_file
     output_path = args.output_file
     
-    api_key = get_gemini_api_key()
-
-    if not api_key:
-        print("API key not found. Please set the GEMINI_API_KEY environment variable.", file=sys.stderr)
-        sys.exit(1)
-
+    # MODIFIED: No API key needed for Ollama.
+    
     # Call the AI to generate content based on the prompt
-    response_data = generate_content(prompt, api_key)
+    # MODIFIED: Only pass the prompt, not an API key.
+    response_data = generate_content(prompt)
 
-    if response_data and 'candidates' in response_data and len(response_data['candidates']) > 0:
-        generated_text = response_data['candidates'][0]['content']['parts'][0]['text']
+    # MODIFIED: Extracting text from Ollama's response format
+    if response_data and 'message' in response_data:
+        generated_text = response_data['message']['content']
         write_to_file(output_path, generated_text)
     else:
-        print("Failed to get a valid response from the Gemini API.", file=sys.stderr)
-        # Write an empty string or error message to the output file to prevent
-        # the subsequent C++ compilation from failing with junk text.
+        print("Failed to get a valid response from the Ollama API.", file=sys.stderr)
+        # Write an error message to the output file
         write_to_file(output_path, "/* AI generation failed or returned no text. */")
         sys.exit(1)
-        
