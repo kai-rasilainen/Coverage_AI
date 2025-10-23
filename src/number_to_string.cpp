@@ -12,6 +12,7 @@ std::string numberToString(const int number) {
         return "POSITIVE: " + std::to_string(number);
     }
 }
+
 std::string numberToString(const NumberGroup& ng) {
     if (ng.number < 0) {
         return ng.group + ": NEGATIVE: " + std::to_string(ng.number);
@@ -31,7 +32,7 @@ std::string returnNumberVariant1(const std::string& str, const int number) {
         return "POSITIVE1: " + str + std::to_string(number);
     }
 }
-/*
+
 std::string returnNumberVariant2(const std::string& str, const int number) {
     if (number < 0) {
         return "NEGATIVE2: " + str + std::to_string(number);
@@ -41,6 +42,7 @@ std::string returnNumberVariant2(const std::string& str, const int number) {
         return "POSITIVE2: " + str + std::to_string(number);
     }
 }
+
 std::string returnNumberVariant3(const std::string& str, const int number) {
     if (number < 0) {
         return "NEGATIVE3: " + str + std::to_string(number);
@@ -50,6 +52,7 @@ std::string returnNumberVariant3(const std::string& str, const int number) {
         return "POSITIVE3: " + str + std::to_string(number);
     }
 }
+
 std::string returnNumberVariant4(const std::string& str, const int number) {
     if (number < 0) {
         return "NEGATIVE4: " + str + std::to_string(number);
@@ -59,6 +62,7 @@ std::string returnNumberVariant4(const std::string& str, const int number) {
         return "POSITIVE4: " + str + std::to_string(number);
     }
 }
+
 std::string returnNumberVariant5(const std::string& str, const int number) {
     if (number < 0) {
         return "NEGATIVE5: " + str + std::to_string(number);
@@ -68,4 +72,4 @@ std::string returnNumberVariant5(const std::string& str, const int number) {
         return "POSITIVE5: " + str + std::to_string(number);
     }
 }
-*/
+
