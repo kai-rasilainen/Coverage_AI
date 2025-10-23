@@ -1,10 +1,10 @@
 // 1. TOP-LEVEL SCRIPT BLOCK: Handles environment setup and parameter loading
-// This block must run first to configure the job before the 'pipeline' block executes.
+// This must run first to configure the job before the 'pipeline' block executes.
 script {
     node('master') { 
         
         // --- CRITICAL FIX: CLEANUP VENV BEFORE ANY GIT OPERATION ---
-        // Ensures the workspace is clean before Git checkout to avoid Permission Denied errors.
+        // These steps ensure the workspace is clean before checkout, resolving Permission Denied errors.
         sh 'sudo chown -R jenkins:jenkins /var/lib/jenkins/workspace/Coverage_AI || true' 
         sh 'rm -rf venv || true' 
         
@@ -43,19 +43,18 @@ pipeline {
         stage('Iterative Coverage Improvement') {
             steps {
                 script {
-                    // --- LOAD UTILITIES ---
+                    // --- SETUP AND UTILITY LOADING ---
                     def sha1 = load 'sha1Utils.groovy'
                     def lcovParser = load 'lcovParser.groovy'
-                    def loopRunner = load 'ai_coverage_loop.groovy' 
-                    def contextBuilder = load 'context_builder.groovy'
-                    def reqsGenerator = load 'generate_reqs.groovy'
+                    def loopRunner = load 'ai_coverage_loop.groovy' // Loop runner loaded early
+                    def contextBuilder = load 'context_builder.groovy' // Context builder loaded here
                     
                     sh 'chmod +x setup_env.sh'
                     // --- VENV SETUP AND DEPENDENCY INSTALLATION ---
                     sh './setup_env.sh' 
                     
-                    // --- 1. CONTEXT DISCOVERY (Externalized) ---
-                    // Runs external script, returns files and combined code context
+                    // --- DYNAMIC FILE DISCOVERY AND CONTEXT AGGREGATION (EXTERNALIZED) ---
+                    // Run the external script and capture the returned Map
                     def contextResult = contextBuilder.run(this)
                     def CONTEXT_FILES = contextResult.files
                     def combinedContext = contextResult.context
@@ -64,8 +63,10 @@ pipeline {
                         error "Error: No .cpp files found in the 'src' directory."
                     }
 
-                    // --- 2. REQUIREMENTS FILE GENERATION (Externalized) ---
-                    // Runs external script to call Python for requirements
+                    // Load the new utility
+                    def reqsGenerator = load 'generate_reqs.groovy'
+
+                    // --- REQUIREMENTS FILE GENERATION (EXTERNALIZED) ---
                     reqsGenerator.run(this, env, params, combinedContext)
                     
                     // --- INITIAL BUILD AND HASH SETUP ---
@@ -73,8 +74,8 @@ pipeline {
                     sh 'mkdir -p build' 
                     sh 'make build/test_number_to_string'
                     
-                    // --- 3. AI COVERAGE LOOP EXECUTION (Externalized) ---
-                    // Runs the core iteration, testing, and AI prompting loop
+                    // --- AI COVERAGE LOOP EXECUTION (EXTERNALIZED) ---
+                    // All complex iteration logic runs inside the external script
                     loopRunner.run(this, env, params, sha1, lcovParser, CONTEXT_FILES)
                 }
             }
@@ -85,7 +86,7 @@ pipeline {
         always {
             echo "This will always run, regardless of the build status."
             
-            // --- ARTIFACT ARCHIVAL ---
+            // --- ARTIFACT ARCHIVAL (II.2) ---
             archiveArtifacts artifacts: """
                 ${env.REQUIREMENTS_FILE},
                 tests/ai_generated_tests.cpp,

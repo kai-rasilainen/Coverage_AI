@@ -21,6 +21,6 @@ fi
 
 # 4. Install all required Python packages for AI and RAG
 ./venv/bin/python3 -m pip install --upgrade pip
-./venv/bin/python3 -m pip install requests google-genai chromadb
+./venv/bin/python3 -m pip install requests google-genai chromadb ollama
 
 echo "Python environment setup complete."
