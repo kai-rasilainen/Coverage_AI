@@ -2,7 +2,8 @@ import os
 import sys
 import json
 import time
-import argparse 
+import argparse
+from typing import Dict, Optional
 
 # Removed: import requests
 # Removed: from google import genai
