@@ -1,11 +1,10 @@
 // 1. TOP-LEVEL SCRIPT BLOCK: Handles environment setup and parameter loading
-// This block must run first to configure the job before the 'pipeline' block executes.
+// This must run first to configure the job before the 'pipeline' block executes.
 script {
     node('master') { 
         
         // --- CRITICAL FIX: CLEANUP VENV BEFORE ANY GIT OPERATION ---
         // These steps ensure the workspace is clean before checkout, resolving Permission Denied errors.
-        // NOTE: If 'sudo' still fails, the Jenkins user must manually be granted ownership of the workspace.
         sh 'sudo chown -R jenkins:jenkins /var/lib/jenkins/workspace/Coverage_AI || true' 
         sh 'rm -rf venv || true' 
         
@@ -47,33 +46,22 @@ pipeline {
                     // --- SETUP AND UTILITY LOADING ---
                     def sha1 = load 'sha1Utils.groovy'
                     def lcovParser = load 'lcovParser.groovy'
+                    def loopRunner = load 'ai_coverage_loop.groovy' // Loop runner loaded early
+                    def contextBuilder = load 'context_builder.groovy' // Context builder loaded here
                     
                     sh 'chmod +x setup_env.sh'
                     // --- VENV SETUP AND DEPENDENCY INSTALLATION ---
                     sh './setup_env.sh' 
                     
-                    // --- DYNAMIC FILE DISCOVERY AND CONTEXT AGGREGATION ---
-                    echo "Discovering context files and aggregating source code..."
-
-                    def CONTEXT_FILES_LIST = findFiles(glob: 'src/**')
-                    def CONTEXT_FILES = CONTEXT_FILES_LIST.findAll { 
-                        !it.name.equals('main.cpp') && it.path.endsWith('.cpp')
-                    }.collect { it.path }
+                    // --- DYNAMIC FILE DISCOVERY AND CONTEXT AGGREGATION (EXTERNALIZED) ---
+                    // Run the external script and capture the returned Map
+                    def contextResult = contextBuilder.run(this)
+                    def CONTEXT_FILES = contextResult.files
+                    def combinedContext = contextResult.context
                     
                     if (CONTEXT_FILES.isEmpty()) {
                         error "Error: No .cpp files found in the 'src' directory."
                     }
-
-                    def combinedContext = ""
-                    CONTEXT_FILES.each { filePath ->
-                        try {
-                            def fileContent = readFile(file: filePath, encoding: 'UTF-8')
-                            combinedContext += "## File: ${filePath}\n\n${fileContent}\n\n\n"
-                        } catch (FileNotFoundException e) {
-                            echo "Warning: Context file not found: ${filePath}"
-                        }
-                    }
-                    echo "Context files found: ${CONTEXT_FILES}"
 
                     // --- REQUIREMENTS FILE GENERATION ---
                     if (!fileExists(env.REQUIREMENTS_FILE)) { 
@@ -96,9 +84,8 @@ pipeline {
                     sh 'mkdir -p build' 
                     sh 'make build/test_number_to_string'
                     
-                    // --- AI COVERAGE LOOP EXECUTION ---
-                    // The core logic is now in the external Groovy file
-                    def loopRunner = load 'ai_coverage_loop.groovy'
+                    // --- AI COVERAGE LOOP EXECUTION (EXTERNALIZED) ---
+                    // All complex iteration logic runs inside the external script
                     loopRunner.run(this, env, params, sha1, lcovParser, CONTEXT_FILES)
                 }
             }
