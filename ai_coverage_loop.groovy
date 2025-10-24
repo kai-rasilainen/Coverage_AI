@@ -122,7 +122,7 @@ def run(script, env, params, sha1, lcovParser, CONTEXT_FILES) {
 
             // **MODIFICATION 3/3: Removed withCredentials**
             script.sh """
-            ./venv/bin/python3 summarize_code.py '${rawContextTempFile}' '${summarizedContextFile}'
+            BUILD_ID=dontKillMe ./venv/bin/python3 summarize_code.py '${rawContextTempFile}' '${summarizedContextFile}'
             """ 
             
             FINAL_CONTEXT = script.readFile(file: summarizedContextFile, encoding: 'UTF-8')
@@ -155,7 +155,7 @@ def run(script, env, params, sha1, lcovParser, CONTEXT_FILES) {
         // Final LLM call (Python script must now use Ollama internally)
         script.echo "Analyzing coverage files, iteration ${iteration} using Ollama..."
         script.sh """
-        ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${promptFilePath}' '${env.COVERAGE_INFO_FILE}' '${outputPath}'
+        BUILD_ID=dontKillMe ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${promptFilePath}' '${env.COVERAGE_INFO_FILE}' '${outputPath}'
         """ 
 
         // --- TEST GENERATION AND DEBOUNCING (I.2) ---
