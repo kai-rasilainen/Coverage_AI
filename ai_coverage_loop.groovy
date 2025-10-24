@@ -31,7 +31,7 @@ def run(script, env, params, sha1, lcovParser, CONTEXT_FILES) {
     
     // **MODIFICATION 1/3: Removed withCredentials**
     script.sh """
-    ./venv/bin/python3 rag_context_finder.py index --files ${contextFilesString}
+    BUILD_ID=dontKillMe ./venv/bin/python3 rag_context_finder.py index --files ${contextFilesString}
     """
     // -------------------------------------------------------------------
     
@@ -85,7 +85,7 @@ def run(script, env, params, sha1, lcovParser, CONTEXT_FILES) {
         
         // **MODIFICATION 2/3: Removed withCredentials**
         script.sh """
-        ./venv/bin/python3 rag_context_finder.py retrieve \\
+        BUILD_ID=dontKillMe ./venv/bin/python3 rag_context_finder.py retrieve \\
             --query "${retrievalQuery}" \\
             --output "${retrievedContextFile}"
         """
