@@ -11,7 +11,7 @@ except ImportError:
 
 # --- CONFIGURATION (Customize these) ---
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = "llama3"  # Choose a model you have pulled in Ollama (e.g., mistral, llama3)
+OLLAMA_MODEL = "qwen2.5-coder:3b"  # Choose a model you have pulled in Ollama (e.g., mistral, llama3)
 # ----------------------------------------
 
 def generate_summary(input_file, output_file):
