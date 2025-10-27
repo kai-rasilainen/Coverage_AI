@@ -50,7 +50,7 @@ def generate_content(prompt: str) -> Dict | None:
                 model=OLLAMA_MODEL,
                 messages=messages,
                 options={
-                    "temperature": 0.5, # Balance creativity and reliability
+                    "temperature": 0.1, # Balance creativity and reliability
                     "num_ctx": 4096     # Ensure context window is large enough
                 }
             )
