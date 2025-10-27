@@ -37,6 +37,7 @@ pipeline {
         COVERAGE_SCRIPT = './coverage.sh'
         COVERAGE_INFO_FILE = 'build/coverage.info'
         COVERAGE_REPORT_HTML = 'coverage_report/index.html'
+        OLLAMA_MODEL = 'llama3:latest'
     }
 
     stages {
