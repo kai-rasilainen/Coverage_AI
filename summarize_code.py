@@ -10,7 +10,7 @@ except ImportError:
     sys.exit(1)
 
 # --- CONFIGURATION (Customize these) ---
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://192.168.1.107:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3")  # Choose a model you have pulled in Ollama (e.g., mistral, llama3)
 # ----------------------------------------
 

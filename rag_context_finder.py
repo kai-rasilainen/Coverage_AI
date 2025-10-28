@@ -11,7 +11,7 @@ from chromadb.utils import embedding_functions
 
 # --- CONFIGURATION (Customize these) ---
 # NOTE: The Ollama server must be running on the Jenkins agent or accessible via this host/port.
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434") 
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://192.168.1.107:11434") 
 EMBEDDING_MODEL_NAME = "nomic-embed-text"  # Ensure this model is pulled in Ollama (e.g., 'ollama pull nomic-embed-text')
 
 DB_PATH = "/tmp/chroma_db_cache"

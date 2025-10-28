@@ -38,6 +38,7 @@ pipeline {
         COVERAGE_INFO_FILE = 'build/coverage.info'
         COVERAGE_REPORT_HTML = 'coverage_report/index.html'
         OLLAMA_MODEL = 'llama3:8b' // Use the 8B tag, which is the most common default version
+        OLLAMA_HOST = 'http://192.168.1.107:11434'
     }
 
     stages {

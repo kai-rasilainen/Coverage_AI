@@ -18,7 +18,7 @@ except ImportError:
 
 
 # --- CONFIGURATION (Customize these) ---
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://192.168.1.107:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3") # Use a code-generation model you have pulled in Ollama (e.g., codellama, deepseek-coder)
 MAX_RETRIES = 5
 # ----------------------------------------
