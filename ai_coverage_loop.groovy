@@ -9,17 +9,6 @@ def run(script, env, params, sha1, CONTEXT_FILES) {
     def promptFile = "build/prompt.txt"
     def outputFile = "build/ai_generated_test.txt"
     
-    // Define validation closure
-    def validateAndFixTestCase = { String testCode ->
-        testCode = testCode.replaceAll('```cpp|```', '')
-        if (!testCode.contains('#include "number_to_string.h"')) {
-            testCode = '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n' + testCode
-        }
-        testCode = testCode.replaceAll(/TEST\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)\s*\{([^}]*)\}\s*TEST/, 'TEST($1, $2) {\n$3}\n\nTEST')
-        testCode = testCode.replaceAll(/\}\s*\n*\s*TEST/, '}\n\nTEST')
-        return testCode
-    }
-
     // Read Requirements content once, as it's needed in the prompt assembly
     def reqSpecContent = script.readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8')
 
@@ -41,12 +30,10 @@ def run(script, env, params, sha1, CONTEXT_FILES) {
     script.echo "Indexing codebase for Semantic Search (RAG) for Ollama..."
     def contextFilesString = CONTEXT_FILES.join(' ')
     
-    // **MODIFICATION 1/3: Removed withCredentials**
     script.sh """
     BUILD_ID=dontKillMe ./venv/bin/python3 rag_context_finder.py index --files ${contextFilesString}
     """
     // -------------------------------------------------------------------
-    
     
     // --- ITERATION LOOP START ---
     while (iteration < maxIterations) {
@@ -120,7 +107,7 @@ Generate only the test code, no explanations.
         }
 
         def rawOutput = script.readFile(file: outputFile, encoding: 'UTF-8')
-        def testCaseCode = validateAndFixTestCase(rawOutput)
+        def testCaseCode = validateAndFixTestCase(rawOutput, script)
 
         if (testCaseCode.isEmpty()) {
             script.error "AI refused the prompt or generated no code. Check the model output."
@@ -145,6 +132,17 @@ Generate only the test code, no explanations.
     
     script.echo "=== Coverage Loop Complete ==="
     script.echo "Final coverage: ${coverage}%"
+}
+
+// Method to validate and fix test case code
+def validateAndFixTestCase(String testCode, script) {
+    testCode = testCode.replaceAll('```cpp|```', '')
+    if (!testCode.contains('#include "number_to_string.h"')) {
+        testCode = '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n' + testCode
+    }
+    testCode = testCode.replaceAll(/TEST\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)\s*\{([^}]*)\}\s*TEST/, 'TEST($1, $2) {\n$3}\n\nTEST')
+    testCode = testCode.replaceAll(/\}\s*\n*\s*TEST/, '}\n\nTEST')
+    return testCode
 }
 
 return this
