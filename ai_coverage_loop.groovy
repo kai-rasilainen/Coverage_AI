@@ -1,4 +1,4 @@
-def run(script, env, params, sha1, lcovParser, CONTEXT_FILES) {
+def run(script, env, params, sha1, CONTEXT_FILES) {
     // --- VARIABLE INITIALIZATION ---
     def maxIterations = 3 
     def iteration = 0
@@ -57,7 +57,7 @@ def run(script, env, params, sha1, lcovParser, CONTEXT_FILES) {
         
         // --- PARSE COVERAGE ---
         def coverageData = lcovParser.parseCoverage(script, env.COVERAGE_INFO_FILE)
-        coverage = coverageData.percentage
+        coverage = coverageData.linesHit / coverageData.linesFound * 100 // Calculate coverage percentage
         script.echo "Current coverage: ${coverage}%"
         
         if (coverage >= 100.0) {
