@@ -147,31 +147,14 @@ pipeline {
         always {
             echo "This will always run, regardless of the build status."
             
-            script {
-                // --- ARTIFACT ARCHIVAL with error handling ---
-                if (fileExists(env.REQUIREMENTS_FILE)) {
-                    archiveArtifacts artifacts: env.REQUIREMENTS_FILE, allowEmptyArchive: true
-                }
-                
-                if (fileExists('tests/ai_generated_tests.cpp')) {
-                    archiveArtifacts artifacts: 'tests/ai_generated_tests.cpp', allowEmptyArchive: true
-                }
-                
-                if (fileExists(env.COVERAGE_INFO_FILE)) {
-                    archiveArtifacts artifacts: env.COVERAGE_INFO_FILE, allowEmptyArchive: true
-                }
-                
-                if (fileExists('coverage_report')) {
-                    archiveArtifacts artifacts: 'coverage_report/**', allowEmptyArchive: true
-                }
-                
-                // --- CLEANUP ---
-                try {
-                    sh 'make clean'
-                } catch (Exception e) {
-                    echo "Warning: Clean failed: ${e.message}"
-                }
-            }
+            // Archive artifacts without using script block
+            archiveArtifacts artifacts: 'test_requirements.md', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'tests/ai_generated_tests.cpp', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'build/coverage.info', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'coverage_report/**', allowEmptyArchive: true
+            
+            // Cleanup
+            sh 'make clean || true'
         }
         
         success {
