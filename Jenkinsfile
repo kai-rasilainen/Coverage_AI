@@ -142,9 +142,9 @@ pipeline {
             }
         }
     }
-
+/*
     post {
-        /*
+        
         always {
             echo "This will always run, regardless of the build status."
             
@@ -165,6 +165,6 @@ pipeline {
         failure {
             echo "Pipeline failed. Check logs for details."
         }
-        */
-    }
+        
+    }*/
 }
