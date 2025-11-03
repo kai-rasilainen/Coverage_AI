@@ -32,7 +32,7 @@ pipeline {
 
     // Environment variables centralize configuration paths
     environment {
-        REQUIREMENTS_FILE = './requirements.md'
+        REQUIREMENTS_FILE = './test_requirements.md'  // Changed from requirements.md
         PROMPT_SCRIPT = 'ai_generate_promt.py'
         COVERAGE_SCRIPT = './coverage.sh'
         COVERAGE_INFO_FILE = 'build/coverage.info'
