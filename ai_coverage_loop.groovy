@@ -6,8 +6,8 @@ def run(script, env, params, sha1, lcovParser, CONTEXT_FILES) {
     def existingTestHashes = [] 
     
     // Define files used inside the loop
-    def testFile = "tests/ai_generated_tests.cpp"
-    def outputPath = "build/ai_generated_test.txt"  // Add this line to define outputPath
+    def promptFile = "build/prompt.txt"
+    def outputFile = "build/ai_generated_test.txt"
     
     // Define validation closure
     def validateAndFixTestCase = { String testCode ->
@@ -170,19 +170,21 @@ Generate only the test code, no explanations.
 """
 
         // --- ASSEMBLE AND EXECUTE PROMPT ---
-        def promptFile = "build/prompt.txt"
         script.writeFile(file: promptFile, text: prompt)
         script.sh """
             mkdir -p build
-            ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file "${promptFile}" "${outputPath}"
+            ./venv/bin/python3 ${env.PROMPT_SCRIPT} \
+                --prompt-file "${promptFile}" \
+                --output-file "${outputFile}" \
+                --requirements-file "${env.REQUIREMENTS_FILE}"
         """
 
         // --- TEST GENERATION AND VALIDATION ---
-        if (!script.fileExists(outputPath)) {
-            script.error "AI output file not found at ${outputPath}"
+        if (!script.fileExists(outputFile)) {
+            script.error "AI output file not found at ${outputFile}"
         }
 
-        def rawOutput = script.readFile(file: outputPath, encoding: 'UTF-8')
+        def rawOutput = script.readFile(file: outputFile, encoding: 'UTF-8')
         def testCaseCode = validateAndFixTestCase(rawOutput)
 
         if (testCaseCode.isEmpty()) {
