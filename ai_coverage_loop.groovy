@@ -1,4 +1,4 @@
-def run(script, env, params, sha1Utils, lcovParserClass, CONTEXT_FILES) {
+def run(script, env, params, sha1Utils, LcovParserClass, CONTEXT_FILES) {
     // --- VARIABLE INITIALIZATION ---
     def maxIterations = 3 
     def iteration = 0
@@ -25,8 +25,8 @@ def run(script, env, params, sha1Utils, lcovParserClass, CONTEXT_FILES) {
         }
     }
     
-    // Instantiate lcovParser
-    def lcovParser = new lcovParserClass()
+    // Instantiate lcovParser - FIX: Use the passed class to create an instance
+    def lcovParser = LcovParserClass.newInstance()
     
     // -------------------------------------------------------------------
     // --- RAG INDEXING (Ollama/Local Ready - NO CREDENTIALS) ---
