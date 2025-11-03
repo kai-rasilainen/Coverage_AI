@@ -7,7 +7,19 @@ def run(script, env, params, sha1, lcovParser, CONTEXT_FILES) {
     
     // Define files used inside the loop
     def testFile = "tests/ai_generated_tests.cpp"
+    def outputPath = "build/ai_generated_test.txt"  // Add this line to define outputPath
     
+    // Define validation closure
+    def validateAndFixTestCase = { String testCode ->
+        testCode = testCode.replaceAll('```cpp|```', '')
+        if (!testCode.contains('#include "number_to_string.h"')) {
+            testCode = '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n' + testCode
+        }
+        testCode = testCode.replaceAll(/TEST\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)\s*\{([^}]*)\}\s*TEST/, 'TEST($1, $2) {\n$3}\n\nTEST')
+        testCode = testCode.replaceAll(/\}\s*\n*\s*TEST/, '}\n\nTEST')
+        return testCode
+    }
+
     // Read Requirements content once, as it's needed in the prompt assembly
     def reqSpecContent = script.readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8')
 
@@ -157,7 +169,19 @@ ${reqSpecContent}
 Generate only the test code, no explanations.
 """
 
+        // --- ASSEMBLE AND EXECUTE PROMPT ---
+        // Write prompt to file and execute AI model
+        script.writeFile(file: "build/prompt.txt", text: prompt)
+        script.sh """
+            mkdir -p build
+            ./venv/bin/python3 ${env.PROMPT_SCRIPT} "build/prompt.txt" "${outputPath}"
+        """
+
         // --- TEST GENERATION AND VALIDATION ---
+        if (!script.fileExists(outputPath)) {
+            script.error "AI output file not found at ${outputPath}"
+        }
+
         def rawOutput = script.readFile(file: outputPath, encoding: 'UTF-8')
         def testCaseCode = validateAndFixTestCase(rawOutput)
 
