@@ -45,29 +45,26 @@ pipeline {
         stage('Iterative Coverage Improvement') {
             steps {
                 script {
-                    // --- LOAD UTILITIES ---
-                    def sha1 = load 'sha1Utils.groovy'
-                    def lcovParser = load 'lcovParser.groovy'
-                    def loopRunner = load 'ai_coverage_loop.groovy' 
-                    def contextBuilder = load 'context_builder.groovy'
+                    // Load external Groovy scripts
+                    def contextBuilder = load 'build_context.groovy'
                     def reqsGenerator = load 'generate_reqs.groovy'
+                    def loopRunner = load 'ai_coverage_loop.groovy'
+                    def sha1Utils = load 'sha1Utils.groovy'
+                    def lcovParserScript = load 'lcovParser.groovy'
                     
-                    sh 'chmod +x setup_env.sh'
-                    // --- VENV SETUP AND DEPENDENCY INSTALLATION ---
-                    sh './setup_env.sh' 
+                    // Get the LcovParser class from the loaded script
+                    def LcovParser = lcovParserScript.LcovParser
                     
-                    // --- 1. CONTEXT DISCOVERY (Externalized) ---
                     // Runs external script, returns files and combined code context
                     def contextResult = contextBuilder.run(this)
                     def CONTEXT_FILES = contextResult.files
                     def combinedContext = contextResult.context
                     
                     if (CONTEXT_FILES.isEmpty()) {
-                        error "Error: No .cpp files found in the 'src' directory."
+                        error "No context files found. Cannot proceed."
                     }
 
                     // --- 2. REQUIREMENTS FILE GENERATION (Externalized) ---
-                    // Runs external script to call Python for requirements
                     reqsGenerator.run(this, env, params, combinedContext)
                     
                     // --- INITIAL BUILD AND HASH SETUP ---
@@ -76,8 +73,7 @@ pipeline {
                     sh 'make build/test_number_to_string'
                     
                     // --- 3. AI COVERAGE LOOP EXECUTION (Externalized) ---
-                    // Runs the core iteration, testing, and AI prompting loop
-                    loopRunner.run(this, env, params, sha1, lcovParser, CONTEXT_FILES)
+                    loopRunner.run(this, env, params, sha1Utils, LcovParser, CONTEXT_FILES)
                 }
             }
         }

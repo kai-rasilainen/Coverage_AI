@@ -1,4 +1,4 @@
-def run(script, env, params, sha1, CONTEXT_FILES) {
+def run(script, env, params, sha1Utils, lcovParserClass, CONTEXT_FILES) {
     // --- VARIABLE INITIALIZATION ---
     def maxIterations = 3 
     def iteration = 0
@@ -20,10 +20,13 @@ def run(script, env, params, sha1, CONTEXT_FILES) {
         def testBlocks = existingContent.split(/(?=\nTEST\()/) 
         testBlocks.each { block ->
             if (block.trim().startsWith('TEST(')) {
-                existingTestHashes.add(sha1(block.trim()))
+                existingTestHashes.add(sha1Utils.hash(block.trim()))
             }
         }
     }
+    
+    // Instantiate lcovParser
+    def lcovParser = new lcovParserClass()
     
     // -------------------------------------------------------------------
     // --- RAG INDEXING (Ollama/Local Ready - NO CREDENTIALS) ---
@@ -44,8 +47,13 @@ def run(script, env, params, sha1, CONTEXT_FILES) {
         
         // --- PARSE COVERAGE ---
         def coverageData = lcovParser.parseCoverage(script, env.COVERAGE_INFO_FILE)
-        coverage = coverageData.linesHit / coverageData.linesFound * 100 // Calculate coverage percentage
-        script.echo "Current coverage: ${coverage}%"
+        
+        if (coverageData.linesFound == 0) {
+            script.error "No coverage data found. Check if tests are running correctly."
+        }
+        
+        coverage = (coverageData.linesHit / coverageData.linesFound) * 100
+        script.echo "Current coverage: ${String.format('%.2f', coverage)}%"
         
         if (coverage >= 100.0) {
             script.echo "✓ Coverage is 100%. Stopping iteration."
@@ -54,6 +62,11 @@ def run(script, env, params, sha1, CONTEXT_FILES) {
         
         // --- GET UNCOVERED LINES ---
         def missListContent = lcovParser.getUncoveredLines(script, env.COVERAGE_INFO_FILE)
+        
+        if (!missListContent || missListContent.trim().isEmpty()) {
+            script.echo "No uncovered lines found, but coverage is ${coverage}%. Stopping."
+            break
+        }
         
         // --- RAG CONTEXT RETRIEVAL ---
         def FINAL_CONTEXT = script.sh(
@@ -113,7 +126,7 @@ Generate only the test code, no explanations.
             script.error "AI refused the prompt or generated no code. Check the model output."
         }
 
-        def newTestHash = sha1(testCaseCode)
+        def newTestHash = sha1Utils.hash(testCaseCode)
         
         if (!existingTestHashes.contains(newTestHash)) {
             script.writeFile file: testFile, text: "\n${testCaseCode}\n", append: true
@@ -131,10 +144,11 @@ Generate only the test code, no explanations.
     }
     
     script.echo "=== Coverage Loop Complete ==="
-    script.echo "Final coverage: ${coverage}%"
+    script.echo "Final coverage: ${String.format('%.2f', coverage)}%"
 }
 
 // Method to validate and fix test case code
+@NonCPS
 def validateAndFixTestCase(String testCode) {
     testCode = testCode.replaceAll('```cpp|```', '')
     if (!testCode.contains('#include "number_to_string.h"')) {
