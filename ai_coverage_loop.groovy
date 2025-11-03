@@ -107,7 +107,7 @@ Generate only the test code, no explanations.
         }
 
         def rawOutput = script.readFile(file: outputFile, encoding: 'UTF-8')
-        def testCaseCode = validateAndFixTestCase(rawOutput, script)
+        def testCaseCode = validateAndFixTestCase(rawOutput)
 
         if (testCaseCode.isEmpty()) {
             script.error "AI refused the prompt or generated no code. Check the model output."
@@ -135,7 +135,7 @@ Generate only the test code, no explanations.
 }
 
 // Method to validate and fix test case code
-def validateAndFixTestCase(String testCode, script) {
+def validateAndFixTestCase(String testCode) {
     testCode = testCode.replaceAll('```cpp|```', '')
     if (!testCode.contains('#include "number_to_string.h"')) {
         testCode = '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n' + testCode
