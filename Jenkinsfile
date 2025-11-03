@@ -37,25 +37,83 @@ pipeline {
         COVERAGE_SCRIPT = './coverage.sh'
         COVERAGE_INFO_FILE = 'build/coverage.info'
         COVERAGE_REPORT_HTML = 'coverage_report/index.html'
-        OLLAMA_MODEL = 'llama3:8b' // Use the 8B tag, which is the most common default version
+        OLLAMA_MODEL = 'llama3:8b'
         OLLAMA_HOST = 'http://192.168.1.107:11434'
     }
 
     stages {
+        stage('Checkout and Verify') {
+            steps {
+                script {
+                    echo "Current workspace: ${env.WORKSPACE}"
+                    sh 'ls -la'
+                    sh 'pwd'
+                    
+                    // Verify required files exist
+                    def requiredFiles = [
+                        'build_context.groovy',
+                        'generate_reqs.groovy',
+                        'ai_coverage_loop.groovy',
+                        'sha1Utils.groovy',
+                        'lcovParser.groovy',
+                        'ai_generate_promt.py',
+                        'coverage.sh',
+                        'Makefile'
+                    ]
+                    
+                    requiredFiles.each { file ->
+                        if (!fileExists(file)) {
+                            error "Required file not found: ${file}"
+                        } else {
+                            echo "✓ Found: ${file}"
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Setup Environment') {
+            steps {
+                script {
+                    echo "Setting up Python virtual environment..."
+                    sh '''
+                        python3 -m venv venv
+                        ./venv/bin/pip install --upgrade pip
+                        ./venv/bin/pip install -r requirements.txt
+                    '''
+                    
+                    echo "Making scripts executable..."
+                    sh 'chmod +x coverage.sh'
+                }
+            }
+        }
+        
         stage('Iterative Coverage Improvement') {
             steps {
                 script {
-                    // Load external Groovy scripts
+                    // Load external Groovy scripts with error handling
+                    echo "Loading Groovy scripts..."
+                    
                     def contextBuilder = load 'build_context.groovy'
+                    echo "✓ Loaded build_context.groovy"
+                    
                     def reqsGenerator = load 'generate_reqs.groovy'
+                    echo "✓ Loaded generate_reqs.groovy"
+                    
                     def loopRunner = load 'ai_coverage_loop.groovy'
+                    echo "✓ Loaded ai_coverage_loop.groovy"
+                    
                     def sha1Utils = load 'sha1Utils.groovy'
+                    echo "✓ Loaded sha1Utils.groovy"
+                    
                     def lcovParserScript = load 'lcovParser.groovy'
+                    echo "✓ Loaded lcovParser.groovy"
                     
                     // Get the LcovParser class from the loaded script
                     def LcovParser = lcovParserScript.LcovParser
                     
                     // Runs external script, returns files and combined code context
+                    echo "Building context..."
                     def contextResult = contextBuilder.run(this)
                     def CONTEXT_FILES = contextResult.files
                     def combinedContext = contextResult.context
@@ -63,8 +121,11 @@ pipeline {
                     if (CONTEXT_FILES.isEmpty()) {
                         error "No context files found. Cannot proceed."
                     }
+                    
+                    echo "Context files: ${CONTEXT_FILES.join(', ')}"
 
                     // --- 2. REQUIREMENTS FILE GENERATION (Externalized) ---
+                    echo "Generating requirements..."
                     reqsGenerator.run(this, env, params, combinedContext)
                     
                     // --- INITIAL BUILD AND HASH SETUP ---
@@ -73,6 +134,7 @@ pipeline {
                     sh 'make build/test_number_to_string'
                     
                     // --- 3. AI COVERAGE LOOP EXECUTION (Externalized) ---
+                    echo "Starting coverage improvement loop..."
                     loopRunner.run(this, env, params, sha1Utils, LcovParser, CONTEXT_FILES)
                 }
             }
@@ -83,18 +145,39 @@ pipeline {
         always {
             echo "This will always run, regardless of the build status."
             
-            // --- ARTIFACT ARCHIVAL ---
-            archiveArtifacts artifacts: """
-                ${env.REQUIREMENTS_FILE},
-                tests/ai_generated_tests.cpp,
-                ${env.COVERAGE_INFO_FILE}
-            """
-            archiveArtifacts artifacts: 'coverage_report/**', allowEmptyArchive: true
-            
-            // --- CLEANUP ---
             script {
-                sh 'make clean' 
+                // --- ARTIFACT ARCHIVAL with error handling ---
+                if (fileExists(env.REQUIREMENTS_FILE)) {
+                    archiveArtifacts artifacts: env.REQUIREMENTS_FILE, allowEmptyArchive: true
+                }
+                
+                if (fileExists('tests/ai_generated_tests.cpp')) {
+                    archiveArtifacts artifacts: 'tests/ai_generated_tests.cpp', allowEmptyArchive: true
+                }
+                
+                if (fileExists(env.COVERAGE_INFO_FILE)) {
+                    archiveArtifacts artifacts: env.COVERAGE_INFO_FILE, allowEmptyArchive: true
+                }
+                
+                if (fileExists('coverage_report')) {
+                    archiveArtifacts artifacts: 'coverage_report/**', allowEmptyArchive: true
+                }
+                
+                // --- CLEANUP ---
+                try {
+                    sh 'make clean'
+                } catch (Exception e) {
+                    echo "Warning: Clean failed: ${e.message}"
+                }
             }
+        }
+        
+        success {
+            echo "Pipeline completed successfully!"
+        }
+        
+        failure {
+            echo "Pipeline failed. Check logs for details."
         }
     }
 }
