@@ -170,11 +170,11 @@ Generate only the test code, no explanations.
 """
 
         // --- ASSEMBLE AND EXECUTE PROMPT ---
-        // Write prompt to file and execute AI model
-        script.writeFile(file: "build/prompt.txt", text: prompt)
+        def promptFile = "build/prompt.txt"
+        script.writeFile(file: promptFile, text: prompt)
         script.sh """
             mkdir -p build
-            ./venv/bin/python3 ${env.PROMPT_SCRIPT} "build/prompt.txt" "${outputPath}"
+            ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file "${promptFile}" "${outputPath}"
         """
 
         // --- TEST GENERATION AND VALIDATION ---
