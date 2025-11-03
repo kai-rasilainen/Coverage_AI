@@ -131,34 +131,66 @@ def run(script, env, params, sha1, lcovParser, CONTEXT_FILES) {
         }
 
         // --- ASSEMBLE FINAL PROMPT ---
-        def prompt = """${params.prompt_coverage}
-            
-            **GOAL: Generate a test case that achieves coverage for the function: ${targetName}.**
-            
-            Function Requirements Specification:
-            ${reqSpecContent}
-            
-            ---
-            
-            Uncovered Code Paths (Miss List):
-            ${missListContent}
-            
-            ---
-            
-            Relevant Source Code:
-            ${FINAL_CONTEXT}""" // Use the compressed context
+        def prompt = """
+Your task is to write Google Test cases to improve code coverage. 
+Follow these strict formatting rules:
 
-        def outputPath = "build_${env.BUILD_NUMBER}_coverage_analysis_${iteration}.txt"
-        def promptFilePath = "build/prompt_content_iter_${iteration}.txt"
-        script.writeFile file: promptFilePath, text: prompt, encoding: 'UTF-8' 
+1. Each test must be a separate TEST macro (no nesting)
+2. Each test must have proper opening and closing braces
+3. Include required headers at the top:
+   #include "number_to_string.h"
+   #include "gtest/gtest.h"
 
-        // Final LLM call (Python script must now use Ollama internally)
-        script.echo "Analyzing coverage files, iteration ${iteration} using Ollama..."
-        script.sh """
-        BUILD_ID=dontKillMe ./venv/bin/python3 ${env.PROMPT_SCRIPT} --prompt-file '${promptFilePath}' '${env.COVERAGE_INFO_FILE}' '${outputPath}'
-        """ 
+Required Test Format:
+TEST(TestSuiteName, TestName) {
+    // test assertions here
+}
 
-        // --- TEST GENERATION AND DEBOUNCING (I.2) ---
+Current Coverage Gaps:
+${missListContent}
+
+Context:
+${FINAL_CONTEXT}
+
+Requirements:
+${reqSpecContent}
+
+Generate only the test code, no explanations.
+"""
+
+// Add test case validation before appending
+def validateAndFixTestCase(String testCode) {
+    // Remove any markdown code block markers
+    testCode = testCode.replaceAll('```cpp|```', '')
+    
+    // Ensure headers are present
+    if (!testCode.contains('#include "number_to_string.h"')) {
+        testCode = '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n' + testCode
+    }
+    
+    // Fix common syntax issues
+    testCode = testCode.replaceAll(/TEST\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)\s*\{([^}]*)\}\s*TEST/, 'TEST($1, $2) {\n$3}\n\nTEST')
+    
+    // Ensure proper spacing and bracing
+    testCode = testCode.replaceAll(/\}\s*\n*\s*TEST/, '}\n\nTEST')
+    
+    return testCode
+}
+
+// After generating test case from LLM
+def generatedTestCode = script.readFile(file: outputPath).trim()
+generatedTestCode = validateAndFixTestCase(generatedTestCode)
+
+// Verify it doesn't already exist (using SHA1)
+def testHash = sha1.hash(generatedTestCode)
+if (!existingTestHashes.contains(testHash)) {
+    script.writeFile file: testFile, text: generatedTestCode, append: true
+    existingTestHashes.add(testHash)
+} else {
+    script.echo "Skipping duplicate test case"
+}
+
+// --- TEST GENERATION AND DEBOUNCING (I.2) ---
         def rawOutput = script.readFile(file: outputPath, encoding: 'UTF-8')
 
         def testCaseCode = rawOutput
