@@ -1,5 +1,4 @@
 def run(script, env, params, sha1, lcovParser, CONTEXT_FILES) {
-    
     // --- VARIABLE INITIALIZATION ---
     def maxIterations = 3 
     def iteration = 0
@@ -158,46 +157,9 @@ ${reqSpecContent}
 Generate only the test code, no explanations.
 """
 
-// Add test case validation before appending
-def validateAndFixTestCase(String testCode) {
-    // Remove any markdown code block markers
-    testCode = testCode.replaceAll('```cpp|```', '')
-    
-    // Ensure headers are present
-    if (!testCode.contains('#include "number_to_string.h"')) {
-        testCode = '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n' + testCode
-    }
-    
-    // Fix common syntax issues
-    testCode = testCode.replaceAll(/TEST\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)\s*\{([^}]*)\}\s*TEST/, 'TEST($1, $2) {\n$3}\n\nTEST')
-    
-    // Ensure proper spacing and bracing
-    testCode = testCode.replaceAll(/\}\s*\n*\s*TEST/, '}\n\nTEST')
-    
-    return testCode
-}
-
-// After generating test case from LLM
-def generatedTestCode = script.readFile(file: outputPath).trim()
-generatedTestCode = validateAndFixTestCase(generatedTestCode)
-
-// Verify it doesn't already exist (using SHA1)
-def testHash = sha1.hash(generatedTestCode)
-if (!existingTestHashes.contains(testHash)) {
-    script.writeFile file: testFile, text: generatedTestCode, append: true
-    existingTestHashes.add(testHash)
-} else {
-    script.echo "Skipping duplicate test case"
-}
-
-// --- TEST GENERATION AND DEBOUNCING (I.2) ---
+        // --- TEST GENERATION AND VALIDATION ---
         def rawOutput = script.readFile(file: outputPath, encoding: 'UTF-8')
-
-        def testCaseCode = rawOutput
-            .replaceAll(/(?s)As an AI, I don't have direct access to your local file system.*?\./, '') 
-            .replaceAll(/```\s*\w*\s*/, '')
-            .replaceAll('```', '')
-            .trim()
+        def testCaseCode = validateAndFixTestCase(rawOutput)
 
         if (testCaseCode.isEmpty()) {
             script.error "AI refused the prompt or generated no code. Check the model output."
