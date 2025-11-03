@@ -85,24 +85,30 @@ def write_to_file(file_path: str, content: str):
 def main():
     parser = argparse.ArgumentParser(description="Generate C++ test cases using Ollama.")
     parser.add_argument('--prompt-file', required=True, help='File containing the prompt')
-    parser.add_argument('output_file', help='File to write the generated test code')
+    parser.add_argument('--output-file', required=True, help='File to write the generated test code')
+    parser.add_argument('--requirements-file', help='Optional requirements file', default=None)
     
     args = parser.parse_args()
     
     try:
         with open(args.prompt_file, 'r', encoding='utf-8') as f:
             prompt = f.read()
-    except FileNotFoundError:
-        print(f"Error: Prompt file not found: {args.prompt_file}", file=sys.stderr)
+            
+        # Optionally read requirements if provided
+        if args.requirements_file and os.path.exists(args.requirements_file):
+            with open(args.requirements_file, 'r', encoding='utf-8') as f:
+                requirements = f.read()
+                prompt = f"{prompt}\n\nRequirements:\n{requirements}"
+    except FileNotFoundError as e:
+        print(f"Error: File not found: {e.filename}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"Error reading prompt file: {e}", file=sys.stderr)
+        print(f"Error reading files: {e}", file=sys.stderr)
         sys.exit(1)
 
     generated_code = generate_content(prompt)
     
     if generated_code:
-        # Ensure the code has necessary headers
         if '#include "number_to_string.h"' not in generated_code:
             generated_code = '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n' + generated_code
         write_to_file(args.output_file, generated_code)
