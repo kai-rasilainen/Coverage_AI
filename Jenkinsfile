@@ -41,7 +41,7 @@ pipeline {
         COVERAGE_SCRIPT   = './coverage.sh'
         COVERAGE_INFO_FILE = 'build/coverage.info'
         PY_REQS           = 'requirements.txt'         // Python deps for the venv
-        OLLAMA_MODEL      = 'llama3'
+        OLLAMA_MODEL      = 'llama3:8b'
         OLLAMA_HOST       = 'http://192.168.1.107:11434'
     }
 
