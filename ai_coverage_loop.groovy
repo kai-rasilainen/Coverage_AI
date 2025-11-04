@@ -1,162 +1,107 @@
 def run(script, env, params, sha1Utils, LcovParserClass, CONTEXT_FILES) {
-    // --- VARIABLE INITIALIZATION ---
-    def maxIterations = 3 
+    def maxIterations = 3
     def iteration = 0
-    def coverage = 0.0
-    def existingTestHashes = [] 
-    
-    // Define files used inside the loop
-    def promptFile = "build/prompt.txt"
-    def outputFile = "build/ai_generated_test.txt"
-    
-    // Read Requirements content once, as it's needed in the prompt assembly
-    def reqSpecContent = script.readFile(file: env.REQUIREMENTS_FILE, encoding: 'UTF-8')
+    def testFile = 'tests/ai_generated_tests.cpp'
+    def promptFile = 'build/prompt.txt'
+    def outputFile = 'build/ai_generated_test.txt'
+    def coveragePct = 0.0
 
-    // Load existing test hashes once before the loop
-    def testFile = "tests/ai_generated_tests.cpp"
-    if (script.fileExists(testFile)) {
-        script.echo "Initializing hash list from existing tests..."
-        def existingContent = script.readFile(file: testFile, encoding: 'UTF-8')
-        def testBlocks = existingContent.split(/(?=\nTEST\()/) 
-        testBlocks.each { block ->
-            if (block.trim().startsWith('TEST(')) {
-                existingTestHashes.add(sha1Utils.hash(block.trim()))
-            }
-        }
+    // Ensure test file has headers once
+    if (!script.fileExists(testFile)) {
+        script.writeFile(file: testFile, text: '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n')
     }
-    
-    // Instantiate lcovParser - FIX: Use the passed class to create an instance
+
+    // Parser instance is local to this step
     def lcovParser = LcovParserClass.newInstance()
-    
-    // -------------------------------------------------------------------
-    // --- RAG INDEXING (Ollama/Local Ready - NO CREDENTIALS) ---
-    script.echo "Indexing codebase for Semantic Search (RAG) for Ollama..."
-    def contextFilesString = CONTEXT_FILES.join(' ')
-    
-    script.sh """
-    BUILD_ID=dontKillMe ./venv/bin/python3 rag_context_finder.py index --files ${contextFilesString}
-    """
-    // -------------------------------------------------------------------
-    
-    // --- ITERATION LOOP START ---
+
     while (iteration < maxIterations) {
-        script.echo "=== ITERATION ${iteration + 1} / ${maxIterations} ==="
-        
-        // --- RUN COVERAGE SCRIPT ---
+        script.echo "=== Iteration ${iteration + 1}/${maxIterations} ==="
+
+        // Run tests and collect coverage
         script.sh "${env.COVERAGE_SCRIPT}"
-        
-        // --- PARSE COVERAGE ---
-        def coverageData = lcovParser.parseCoverage(script, env.COVERAGE_INFO_FILE)
-        
-        if (coverageData.linesFound == 0) {
-            script.error "No coverage data found. Check if tests are running correctly."
-        }
-        
-        coverage = (coverageData.linesHit / coverageData.linesFound) * 100
-        script.echo "Current coverage: ${String.format('%.2f', coverage)}%"
-        
-        if (coverage >= 100.0) {
-            script.echo "✓ Coverage is 100%. Stopping iteration."
+
+        // Parse coverage
+        def cov = lcovParser.parseCoverage(script, env.COVERAGE_INFO_FILE)
+        if ((cov.linesFound ?: 0) == 0) {
+            script.echo "No coverage data found (build/coverage.info missing or empty)."
             break
         }
-        
-        // --- GET UNCOVERED LINES ---
-        def missListContent = lcovParser.getUncoveredLines(script, env.COVERAGE_INFO_FILE)
-        
-        if (!missListContent || missListContent.trim().isEmpty()) {
-            script.echo "No uncovered lines found, but coverage is ${coverage}%. Stopping."
+        coveragePct = (cov.linesHit as double) / (cov.linesFound as double) * 100.0
+        script.echo String.format("Current coverage: %.2f%%", coveragePct)
+        if (coveragePct >= 100.0) {
+            script.echo "Coverage is 100%. Done."
             break
         }
-        
-        // --- RAG CONTEXT RETRIEVAL ---
-        def FINAL_CONTEXT = script.sh(
-            script: """
-            ./venv/bin/python3 rag_context_finder.py query --query "${missListContent}"
-            """,
-            returnStdout: true
-        ).trim()
 
-        // --- ASSEMBLE PROMPT ---
-        def prompt = """
-Your task is to write Google Test cases to improve code coverage. 
-Follow these strict formatting rules:
+        // Build prompt from miss list
+        def missList = (cov.missList ?: []).join('\n')
+        def prompt = """Create additional GoogleTest cases to cover these uncovered lines:
 
-1. Each test must be a separate TEST macro (no nesting)
-2. Each test must have proper opening and closing braces
-3. Include required headers at the top:
-   #include "number_to_string.h"
-   #include "gtest/gtest.h"
+${missList}
 
-Required Test Format:
-TEST(TestSuiteName, TestName) {
-    // test assertions here
-}
-
-Current Coverage Gaps:
-${missListContent}
-
-Context:
-${FINAL_CONTEXT}
-
-Requirements:
-${reqSpecContent}
-
-Generate only the test code, no explanations.
+Rules:
+- Each test is a separate TEST(TestSuite, TestName)
+- No nested TESTs, proper braces
+- Use functions from number_to_string.h
+- Output ONLY C++ test code, no explanations.
 """
 
-        // --- ASSEMBLE AND EXECUTE PROMPT ---
         script.writeFile(file: promptFile, text: prompt)
         script.sh """
-            mkdir -p build
+            set -e
             ./venv/bin/python3 ${env.PROMPT_SCRIPT} \
                 --prompt-file "${promptFile}" \
                 --output-file "${outputFile}" \
                 --requirements-file "${env.REQUIREMENTS_FILE}"
         """
-
-        // --- TEST GENERATION AND VALIDATION ---
         if (!script.fileExists(outputFile)) {
-            script.error "AI output file not found at ${outputFile}"
+            script.error "AI output not found: ${outputFile}"
         }
 
-        def rawOutput = script.readFile(file: outputFile, encoding: 'UTF-8')
-        def testCaseCode = validateAndFixTestCase(rawOutput)
-
-        if (testCaseCode.isEmpty()) {
-            script.error "AI refused the prompt or generated no code. Check the model output."
+        def raw = script.readFile(file: outputFile, encoding: 'UTF-8').trim()
+        def fixed = validateAndFixTestCase(raw)
+        if (fixed) {
+            def hash = sha1Utils.hash(fixed)
+            // avoid simple duplicates by hash-of-block
+            def existing = script.readFile(file: testFile, encoding: 'UTF-8')
+            if (!existing.contains(hash)) {
+                script.writeFile(file: testFile, text: "\n// HASH:${hash}\n${fixed}\n", append: true)
+            } else {
+                script.echo "Duplicate test skipped."
+            }
         }
 
-        def newTestHash = sha1Utils.hash(testCaseCode)
-        
-        if (!existingTestHashes.contains(newTestHash)) {
-            script.writeFile file: testFile, text: "\n${testCaseCode}\n", append: true
-            existingTestHashes.add(newTestHash)
-            script.echo "✓ New test case added."
-        } else {
-            script.echo "⚠ Duplicate test detected, skipping."
-        }
-        
-        // --- REBUILD AND RE-RUN TESTS ---
-        script.sh 'make clean'
+        // Rebuild tests for next iteration
         script.sh 'make build/test_number_to_string'
-        
         iteration++
     }
-    
-    script.echo "=== Coverage Loop Complete ==="
-    script.echo "Final coverage: ${String.format('%.2f', coverage)}%"
+
+    script.echo String.format("Final coverage: %.2f%%", coveragePct)
 }
 
-// Method to validate and fix test case code
+// Keep this NonCPS to avoid CPS serialization issues for regex processing
 @NonCPS
-def validateAndFixTestCase(String testCode) {
-    testCode = testCode.replaceAll('```cpp|```', '')
-    if (!testCode.contains('#include "number_to_string.h"')) {
-        testCode = '#include "number_to_string.h"\n#include "gtest/gtest.h"\n\n' + testCode
+def validateAndFixTestCase(String code) {
+    if (code == null) return ""
+    def cleaned = code.replaceAll('```cpp|```', '').trim()
+
+    // Ensure tests are not nested: split by TEST( and rejoin with braces fixed
+    // Also ensure each TEST block ends with a closing brace.
+    // Lightweight normalizer:
+    cleaned = cleaned.replaceAll(/(?m)\}\s*TEST\(/, "}\n\nTEST(")
+    // If file lacks headers, we do not re-add here (main test file has them)
+
+    // Drop accidental includes from model duplicates except gtest/number_to_string
+    def lines = cleaned.readLines()
+    def kept = []
+    lines.each { ln ->
+        if (ln.trim().startsWith('#include') && !ln.contains('gtest') && !ln.contains('number_to_string.h')) {
+            // skip
+        } else {
+            kept << ln
+        }
     }
-    testCode = testCode.replaceAll(/TEST\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)\s*\{([^}]*)\}\s*TEST/, 'TEST($1, $2) {\n$3}\n\nTEST')
-    testCode = testCode.replaceAll(/\}\s*\n*\s*TEST/, '}\n\nTEST')
-    return testCode
+    return kept.join('\n').trim()
 }
 
 return this

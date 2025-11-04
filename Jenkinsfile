@@ -30,141 +30,109 @@ script {
 pipeline {
     agent any
 
-    // Environment variables centralize configuration paths
+    options {
+        timestamps()
+        skipDefaultCheckout(false)
+    }
+
     environment {
-        REQUIREMENTS_FILE = './test_requirements.md'  // Changed from requirements.md
-        PROMPT_SCRIPT = 'ai_generate_promt.py'
-        COVERAGE_SCRIPT = './coverage.sh'
+        REQUIREMENTS_FILE = 'test_requirements.md'     // AI-generated textual test requirements
+        PROMPT_SCRIPT     = 'ai_generate_promt.py'     // Python LLM driver
+        COVERAGE_SCRIPT   = './coverage.sh'
         COVERAGE_INFO_FILE = 'build/coverage.info'
-        COVERAGE_REPORT_HTML = 'coverage_report/index.html'
-        OLLAMA_MODEL = 'llama3:8b'
-        OLLAMA_HOST = 'http://192.168.1.107:11434'
+        PY_REQS           = 'requirements.txt'         // Python deps for the venv
+        OLLAMA_MODEL      = 'llama3'
+        OLLAMA_HOST       = 'http://192.168.1.107:11434'
     }
 
     stages {
         stage('Checkout and Verify') {
             steps {
+                sh 'pwd && ls -la'
+                // Verify key files exist, fail fast with a clear message
                 script {
-                    echo "Current workspace: ${env.WORKSPACE}"
-                    sh 'ls -la'
-                    sh 'pwd'
-                    
-                    // Verify required files exist
-                    def requiredFiles = [
-                        'build_context.groovy',
-                        'generate_reqs.groovy',
-                        'ai_coverage_loop.groovy',
-                        'sha1Utils.groovy',
-                        'lcovParser.groovy',
-                        'ai_generate_promt.py',
-                        'coverage.sh',
-                        'Makefile'
-                    ]
-                    
-                    requiredFiles.each { file ->
-                        if (!fileExists(file)) {
-                            error "Required file not found: ${file}"
-                        } else {
-                            echo "✓ Found: ${file}"
-                        }
+                    ['Makefile','coverage.sh','ai_generate_promt.py',
+                     'build_context.groovy','generate_reqs.groovy',
+                     'ai_coverage_loop.groovy','lcovParser.groovy','sha1Utils.groovy',
+                     'src/number_to_string.h','src/number_to_string.cpp',
+                     'tests/test_number_to_string.cpp'
+                    ].each { f ->
+                        if (!fileExists(f)) { error "Missing required file: ${f}" }
                     }
                 }
+                sh 'chmod +x coverage.sh || true'
             }
         }
-        
-        stage('Setup Environment') {
+
+        stage('Setup Python venv') {
+            steps {
+                // Use bash so we can source; or use POSIX '.' if you prefer /bin/sh
+                sh '''#!/bin/bash
+                    set -e
+                    rm -rf venv
+                    python3 -m venv venv
+                    source venv/bin/activate
+                    python3 -m pip install --upgrade pip
+                    if [ -f requirements.txt ]; then
+                      python3 -m pip install -r requirements.txt
+                    fi
+                '''
+            }
+        }
+
+        stage('Generate Test Requirements (AI)') {
             steps {
                 script {
-                    echo "Setting up Python virtual environment..."
-                    sh '''#!/bin/bash
-                        rm -rf venv
-                        python3 -m venv venv
-                        source venv/bin/activate
-                        python3 -m pip install --upgrade pip
-                        python3 -m pip install -r requirements.txt
-                    '''
-                    
-                    echo "Making scripts executable..."
-                    sh 'chmod +x coverage.sh'
+                    // Build context and generate textual requirements with two short-lived loads
+                    def ctx = load 'build_context.groovy'
+                    def ctxResult = ctx.run(this) // returns [files, context]
+                    def reqsGen = load 'generate_reqs.groovy'
+                    reqsGen.run(this, env, params, ctxResult.context)
+                    // Do not keep references to loaded scripts; they go out of scope here
                 }
             }
         }
-        
+
+        stage('Build tests (first pass)') {
+            steps {
+                sh '''
+                    set -e
+                    mkdir -p build
+                    make build/test_number_to_string
+                '''
+            }
+        }
+
         stage('Iterative Coverage Improvement') {
             steps {
                 script {
-                    // Load external Groovy scripts with error handling
-                    echo "Loading Groovy scripts..."
-                    
-                    def contextBuilder = load 'build_context.groovy'
-                    echo "✓ Loaded build_context.groovy"
-                    
-                    def reqsGenerator = load 'generate_reqs.groovy'
-                    echo "✓ Loaded generate_reqs.groovy"
-                    
-                    def loopRunner = load 'ai_coverage_loop.groovy'
-                    echo "✓ Loaded ai_coverage_loop.groovy"
-                    
+                    // Load helpers and run the loop in this single step only
                     def sha1Utils = load 'sha1Utils.groovy'
-                    echo "✓ Loaded sha1Utils.groovy"
-                    
                     def lcovParserScript = load 'lcovParser.groovy'
-                    echo "✓ Loaded lcovParser.groovy"
-                    
-                    // Get the LcovParser class from the loaded script
-                    def LcovParser = lcovParserScript.LcovParser
-                    
-                    // Runs external script, returns files and combined code context
-                    echo "Building context..."
-                    def contextResult = contextBuilder.run(this)
-                    def CONTEXT_FILES = contextResult.files
-                    def combinedContext = contextResult.context
-                    
-                    if (CONTEXT_FILES.isEmpty()) {
-                        error "No context files found. Cannot proceed."
-                    }
-                    
-                    echo "Context files: ${CONTEXT_FILES.join(', ')}"
-
-                    // --- 2. REQUIREMENTS FILE GENERATION (Externalized) ---
-                    echo "Generating requirements..."
-                    reqsGenerator.run(this, env, params, combinedContext)
-                    
-                    // --- INITIAL BUILD AND HASH SETUP ---
-                    echo "Building test executable for the first time..."
-                    sh 'mkdir -p build' 
-                    sh 'make build/test_number_to_string'
-                    
-                    // --- 3. AI COVERAGE LOOP EXECUTION (Externalized) ---
-                    echo "Starting coverage improvement loop..."
-                    loopRunner.run(this, env, params, sha1Utils, LcovParser, CONTEXT_FILES)
+                    def LcovParserClass = lcovParserScript.LcovParser
+                    def loop = load 'ai_coverage_loop.groovy'
+                    // Provide just the source files as context for RAG, if the loop uses it
+                    def contextFiles = ['src/number_to_string.h','src/number_to_string.cpp','tests/test_number_to_string.cpp']
+                    loop.run(this, env, params, sha1Utils, LcovParserClass, contextFiles)
+                    // Loaded objects go out of scope when this script step ends
                 }
             }
         }
     }
-/*
+
     post {
-        
         always {
-            echo "This will always run, regardless of the build status."
-            
-            // Archive artifacts without using script block
+            echo 'Archiving artifacts...'
+            // No script {} here to avoid CPS serialization of non-serializable objects
             archiveArtifacts artifacts: 'test_requirements.md', allowEmptyArchive: true
             archiveArtifacts artifacts: 'tests/ai_generated_tests.cpp', allowEmptyArchive: true
             archiveArtifacts artifacts: 'build/coverage.info', allowEmptyArchive: true
             archiveArtifacts artifacts: 'coverage_report/**', allowEmptyArchive: true
-            
-            // Cleanup
+
+            // Best-effort cleanup
             sh 'make clean || true'
         }
-        
-        success {
-            echo "Pipeline completed successfully!"
-        }
-        
-        failure {
-            echo "Pipeline failed. Check logs for details."
-        }
-        
-    }*/
+        success { echo 'Pipeline completed successfully.' }
+        failure { echo 'Pipeline failed. Check logs above.' }
+    }
 }
