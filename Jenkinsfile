@@ -6,7 +6,6 @@ pipeline {
         skipDefaultCheckout(false)
     }
 
-    // Define parameters directly in the pipeline
     parameters {
         choice(
             name: 'LOG_LEVEL',
@@ -76,6 +75,9 @@ pipeline {
                     def ctxResult = ctx.run(this)
                     def reqsGen = load 'generate_reqs.groovy'
                     reqsGen.run(this, env, params, ctxResult.context)
+                    // Explicitly dereference
+                    ctx = null
+                    reqsGen = null
                 }
             }
         }
@@ -99,21 +101,36 @@ pipeline {
                     def loop = load 'ai_coverage_loop.groovy'
                     def contextFiles = ['src/number_to_string.h','src/number_to_string.cpp','tests/test_number_to_string.cpp']
                     loop.run(this, env, params, sha1Utils, LcovParserClass, contextFiles)
+                    // Explicitly dereference all loaded objects
+                    sha1Utils = null
+                    lcovParserScript = null
+                    LcovParserClass = null
+                    loop = null
                 }
+            }
+        }
+
+        stage('Archive Artifacts') {
+            steps {
+                echo 'Archiving artifacts...'
+                archiveArtifacts artifacts: 'test_requirements.md', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'tests/ai_generated_tests.cpp', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'build/coverage.info', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'coverage_report/**', allowEmptyArchive: true
             }
         }
     }
 
     post {
         always {
-            echo 'Archiving artifacts...'
-            archiveArtifacts artifacts: 'test_requirements.md', allowEmptyArchive: true
-            archiveArtifacts artifacts: 'tests/ai_generated_tests.cpp', allowEmptyArchive: true
-            archiveArtifacts artifacts: 'build/coverage.info', allowEmptyArchive: true
-            archiveArtifacts artifacts: 'coverage_report/**', allowEmptyArchive: true
+            echo 'Pipeline execution complete.'
             sh 'make clean || true'
         }
-        success { echo 'Pipeline completed successfully.' }
-        failure { echo 'Pipeline failed. Check logs above.' }
+        success { 
+            echo 'Pipeline completed successfully.' 
+        }
+        failure { 
+            echo 'Pipeline failed. Check logs above.' 
+        }
     }
 }
