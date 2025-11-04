@@ -35,6 +35,21 @@ pipeline {
         skipDefaultCheckout(false)
     }
 
+    // Define parameters directly in the pipeline
+    parameters {
+        choice(
+            name: 'LOG_LEVEL',
+            choices: ['INFO', 'DEBUG', 'WARNING', 'ERROR'],
+            description: 'Select log level'
+        )
+        booleanParam(
+            name: 'CLEAN_BUILD',
+            defaultValue: false,
+            description: 'Perform a clean build'
+        )
+        // Add other parameters as needed
+    }
+
     environment {
         REQUIREMENTS_FILE = 'test_requirements.md'     // AI-generated textual test requirements
         PROMPT_SCRIPT     = 'ai_generate_promt.py'     // Python LLM driver
@@ -46,6 +61,12 @@ pipeline {
     }
 
     stages {
+        stage('Cleanup Workspace') {
+            steps {
+                sh 'rm -rf venv || true'
+            }
+        }
+
         stage('Checkout and Verify') {
             steps {
                 sh 'pwd && ls -la'
