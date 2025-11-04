@@ -58,10 +58,14 @@ pipeline {
         stage('Generate Test Requirements (AI)') {
             steps {
                 script {
-                    def ctx = load 'build_context.groovy'
+                    def ctx = load('build_context.groovy')
                     def ctxResult = ctx.run(this)
-                    def reqsGen = load 'generate_reqs.groovy'
+                    def reqsGen = load('generate_reqs.groovy')
                     reqsGen.run(this, env, params, ctxResult.context)
+                    // Don't keep references
+                    ctx = null
+                    reqsGen = null
+                    ctxResult = null
                 }
             }
         }
@@ -75,13 +79,21 @@ pipeline {
         stage('Iterative Coverage Improvement') {
             steps {
                 script {
-                    def sha1Utils = load 'sha1Utils.groovy'
-                    def lcovParserScript = load 'lcovParser.groovy'
+                    def sha1Utils = load('sha1Utils.groovy')
+                    def lcovParserScript = load('lcovParser.groovy')
                     def LcovParserClass = lcovParserScript.LcovParser
-                    def loop = load 'ai_coverage_loop.groovy'
+                    def loop = load('ai_coverage_loop.groovy')
                     def contextFiles = ['src/number_to_string.h','src/number_to_string.cpp','tests/test_number_to_string.cpp']
                     loop.run(this, env, params, sha1Utils, LcovParserClass, contextFiles)
+                    // Clear all references
+                    sha1Utils = null
+                    lcovParserScript = null
+                    LcovParserClass = null
+                    loop = null
+                    contextFiles = null
                 }
+                // Force garbage collection hint
+                System.gc()
             }
         }
 
@@ -94,15 +106,15 @@ pipeline {
                 archiveArtifacts artifacts: 'coverage_report/**', allowEmptyArchive: true
             }
         }
+
+        stage('Cleanup Build') {
+            steps {
+                sh 'make clean || true'
+            }
+        }
     }
 
     post {
-        cleanup {
-            echo 'Cleaning up...'
-            catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-                sh 'make clean'
-            }
-        }
         success { 
             echo 'Pipeline completed successfully.' 
         }
