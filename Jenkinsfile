@@ -38,18 +38,7 @@ pipeline {
 
         stage('Checkout and Verify') {
             steps {
-                sh 'pwd && ls -la'
-                script {
-                    ['Makefile','coverage.sh','ai_generate_promt.py',
-                     'build_context.groovy','generate_reqs.groovy',
-                     'ai_coverage_loop.groovy','lcovParser.groovy','sha1Utils.groovy',
-                     'src/number_to_string.h','src/number_to_string.cpp',
-                     'tests/test_number_to_string.cpp'
-                    ].each { f ->
-                        if (!fileExists(f)) { error "Missing required file: ${f}" }
-                    }
-                }
-                sh 'chmod +x coverage.sh || true'
+                sh 'pwd && ls -la && chmod +x coverage.sh || true'
             }
         }
 
@@ -61,9 +50,7 @@ pipeline {
                     python3 -m venv venv
                     source venv/bin/activate
                     python3 -m pip install --upgrade pip
-                    if [ -f requirements.txt ]; then
-                      python3 -m pip install -r requirements.txt
-                    fi
+                    [ -f requirements.txt ] && python3 -m pip install -r requirements.txt || true
                 '''
             }
         }
@@ -75,20 +62,13 @@ pipeline {
                     def ctxResult = ctx.run(this)
                     def reqsGen = load 'generate_reqs.groovy'
                     reqsGen.run(this, env, params, ctxResult.context)
-                    // Explicitly dereference
-                    ctx = null
-                    reqsGen = null
                 }
             }
         }
 
         stage('Build tests (first pass)') {
             steps {
-                sh '''
-                    set -e
-                    mkdir -p build
-                    make build/test_number_to_string
-                '''
+                sh 'mkdir -p build && make build/test_number_to_string'
             }
         }
 
@@ -101,11 +81,6 @@ pipeline {
                     def loop = load 'ai_coverage_loop.groovy'
                     def contextFiles = ['src/number_to_string.h','src/number_to_string.cpp','tests/test_number_to_string.cpp']
                     loop.run(this, env, params, sha1Utils, LcovParserClass, contextFiles)
-                    // Explicitly dereference all loaded objects
-                    sha1Utils = null
-                    lcovParserScript = null
-                    LcovParserClass = null
-                    loop = null
                 }
             }
         }
@@ -122,9 +97,11 @@ pipeline {
     }
 
     post {
-        always {
-            echo 'Pipeline execution complete.'
-            sh 'make clean || true'
+        cleanup {
+            echo 'Cleaning up...'
+            catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+                sh 'make clean'
+            }
         }
         success { 
             echo 'Pipeline completed successfully.' 
